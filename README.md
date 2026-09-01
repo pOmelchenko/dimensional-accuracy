@@ -16,8 +16,9 @@ measured = scale * nominal + fixed_offset
 - calipers with a resolution of 0.01–0.02 mm.
 
 Applying the calculated values requires a PrusaSlicer build that includes the
-Lua preset-setting fix. Earlier 3.0 alpha builds accept the calls without an
-error but leave the active settings unchanged.
+Lua preset-setting fix. Earlier 3.0 alpha builds bypass preset-change
+notifications, so the settings UI and slicing state may remain stale after
+the calls.
 
 ## Installation
 
