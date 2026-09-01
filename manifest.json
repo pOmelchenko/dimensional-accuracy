@@ -1,0 +1,15 @@
+{
+    "id": "dev.omelchenko.dimensional-accuracy",
+    "name": "Dimensional accuracy calibration",
+    "license": "AGPL-3.0-only",
+    "min_slicer_version": "3.0.0",
+    "version": "0.1.0",
+    "author": "pOmelchenko",
+    "description": "Generate an XY calibration gauge and estimate scale and contour compensation from caliper measurements.",
+    "category": "calibration",
+    "repo": "https://github.com/pOmelchenko/dimensional-accuracy",
+    "web": "https://github.com/pOmelchenko/dimensional-accuracy",
+    "required_apis": {
+        "project.plugin": "1.0.0"
+    }
+}

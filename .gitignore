@@ -1,0 +1,13 @@
+# PrusaSlicer plugin signing artifacts
+.checksums
+.signature
+*.zip
+
+# Never commit private signing keys
+*.private.pem
+
+# Editor and OS files
+.idea/
+.vscode/
+*~
+.DS_Store
