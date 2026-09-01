@@ -15,6 +15,10 @@ measured = scale * nominal + fixed_offset
 - an FFF printer preset (SLA presets are not supported);
 - calipers with a resolution of 0.01–0.02 mm.
 
+Applying the calculated values requires a PrusaSlicer build that includes the
+Lua preset-setting fix. Earlier 3.0 alpha builds accept the calls without an
+error but leave the active settings unchanged.
+
 ## Installation
 
 Open the configuration directory with `Help -> Show Configuration Folder`,
@@ -53,7 +57,7 @@ Select `Plugins -> Rescan` in PrusaSlicer or restart the application.
    - for XY, enter the six grid measurements;
    - for Z, enter the three measured step heights Z40, Z80, and Z120.
 
-6. Inspect the applied values in the print and filament settings, then print
+6. Confirm the applied values in the print and filament settings, then print
    the relevant calibration object again to verify the result.
 
 The XY-A gauge is a single 120 x 120 x 4.5 mm `#`-like body made from 6.5 mm

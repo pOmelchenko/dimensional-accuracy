@@ -195,17 +195,21 @@ local function run_xy_calibration(bed, opts)
     )
 
     if opts.apply_uniform_scale then
-        bed:material_presets(0):set(
+        local material_settings = bed:material_presets(0)
+        material_settings:set(
             "filament_shrinkage_compensation_xy",
-            string.format("%.6f%%", shrinkage_percent)
+            shrinkage_percent
         )
+        print("Applied filament shrinkage compensation XY to the active material settings")
     end
 
     if opts.apply_contour_offset then
-        bed:print_presets():set(
+        local print_settings = bed:print_presets()
+        print_settings:set(
             "xy_size_compensation",
             xy_size_compensation
         )
+        print("Applied XY size compensation to the active print settings")
     end
 
     if anisotropy_percent > 0.1 then
@@ -242,10 +246,12 @@ local function run_z_calibration(bed, opts)
     )
 
     if opts.apply_z_shrinkage then
-        bed:material_presets(0):set(
+        local material_settings = bed:material_presets(0)
+        material_settings:set(
             "filament_shrinkage_compensation_z",
-            string.format("%.6f%%", shrinkage_percent)
+            shrinkage_percent
         )
+        print("Applied filament shrinkage compensation Z to the active material settings")
     end
 end
 
