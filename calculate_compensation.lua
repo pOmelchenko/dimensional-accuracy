@@ -29,6 +29,29 @@ info = {
 }
 
 local NOMINAL_LENGTHS = {40.0, 80.0, 120.0}
+local MIN_SHRINKAGE_PERCENT = -10.0
+local MAX_SHRINKAGE_PERCENT = 10.0
+
+local function current_fff_bed()
+    local bed = api.project:current_bed()
+    local supports_fff_settings = pcall(function()
+        bed:material_presets(0):value("filament_shrinkage_compensation_xy")
+        bed:print_presets():value("xy_size_compensation")
+    end)
+
+    if not supports_fff_settings then
+        error(
+            "Dimensional accuracy calibration is supported only for FFF " ..
+            "printer presets; switch from SLA to an FFF printer preset"
+        )
+    end
+
+    return bed
+end
+
+local function clamp(value, minimum, maximum)
+    return math.max(minimum, math.min(maximum, value))
+end
 
 local function fit_axis(measured)
     local nominal_mean = 0.0
@@ -88,6 +111,7 @@ local function print_axis_result(axis, result)
 end
 
 function execute(opts)
+    local bed = current_fff_bed()
     local x = fit_axis({opts.x40, opts.x80, opts.x120})
     local y = fit_axis({opts.y40, opts.y80, opts.y120})
 
@@ -95,7 +119,12 @@ function execute(opts)
     -- one isotropic contour offset. Use the mean of the independent estimates,
     -- while retaining the per-axis results in the log for diagnosing anisotropy.
     local mean_measured_scale = (x.slope + y.slope) / 2.0
-    local shrinkage_percent = 100.0 * (1.0 - mean_measured_scale)
+    local calculated_shrinkage_percent = 100.0 * (1.0 - mean_measured_scale)
+    local shrinkage_percent = clamp(
+        calculated_shrinkage_percent,
+        MIN_SHRINKAGE_PERCENT,
+        MAX_SHRINKAGE_PERCENT
+    )
     local xy_size_compensation =
         (x.contour_compensation + y.contour_compensation) / 2.0
     local anisotropy_percent = math.abs(x.slope - y.slope) * 100.0
@@ -113,7 +142,16 @@ function execute(opts)
         xy_size_compensation
     ))
 
-    local bed = api.project:current_bed()
+    if shrinkage_percent ~= calculated_shrinkage_percent then
+        print(string.format(
+            "WARNING: Calculated shrinkage %.4f%% is outside PrusaSlicer's " ..
+            "supported %.0f%% to %.0f%% range and was limited to %.4f%%.",
+            calculated_shrinkage_percent,
+            MIN_SHRINKAGE_PERCENT,
+            MAX_SHRINKAGE_PERCENT,
+            shrinkage_percent
+        ))
+    end
 
     if opts.apply_uniform_scale then
         bed:material_presets(0):set(

@@ -12,6 +12,7 @@ measured = scale * nominal + contour_offset
 
 - PrusaSlicer 3.0 or newer;
 - `project.plugin` API version 1.0.0;
+- an FFF printer preset (SLA presets are not supported);
 - calipers with a resolution of 0.01–0.02 mm.
 
 ## Installation
@@ -69,6 +70,8 @@ The calculation is not tied to this particular mesh. Any gauge that supplies
 the same three external nominal spans per axis can be used. The model assumes
 that error is the sum of a length-dependent scale term and one constant
 two-contour offset; it does not model nonlinear or feature-specific error.
+The common shrinkage estimate is limited to PrusaSlicer's supported range of
+-10% to +10%; the process log reports a warning whenever limiting is applied.
 
 ## Model source
 
@@ -86,6 +89,8 @@ openscad --export-format binstl \
 - PrusaSlicer provides one filament shrinkage value for both X and Y. The
   plugin applies their mean correction and writes the independent values to
   the log.
+- The compensation settings are FFF-specific. The calculator rejects SLA
+  presets before calculating or changing any settings.
 - The Lua API cannot scale an existing object independently along X and Y.
 - The plugin changes the active settings of the current project but does not
   create a saved user preset.
