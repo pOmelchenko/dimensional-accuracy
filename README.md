@@ -20,6 +20,11 @@ Lua preset-setting fix. Earlier 3.0 alpha builds bypass preset-change
 notifications, so the settings UI and slicing state may remain stale after
 the calls.
 
+Entering fractional measurements also requires the PrusaSlicer fix tracked in
+[prusa3d/PrusaSlicer#15611](https://github.com/prusa3d/PrusaSlicer/issues/15611).
+Affected builds swap the `float` and `int` dialog controls, so every fractional
+X/Y/Z measurement is rounded to an integer before it reaches `execute(opts)`.
+
 ## Installation
 
 Open the configuration directory with `Help -> Show Configuration Folder`,
