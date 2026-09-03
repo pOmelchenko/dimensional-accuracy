@@ -15,29 +15,21 @@ info = {
         },
         {
             name = "generate_z",
-            label = "Generate Z coupon",
+            label = "Generate Z gauge",
             type = "bool",
             default = false
         }
     }
 }
 
-local Z_STEP_SIZE = 20.0
-local Z_STEP_SPACING = 18.0
-local Z_STEP_HEIGHTS = {40.0, 80.0, 120.0}
+local XY_MODEL_FILE = "dimensional_accuracy_gauge.stl"
+local Z_MODEL_FILE = "dimensional_accuracy_z_gauge.stl"
+local XYZ_MODEL_FILE = "dimensional_accuracy_xyz_gauge.stl"
 
-local function z_steps()
-    local steps = {}
-    for index, height in ipairs(Z_STEP_HEIGHTS) do
-        table.insert(steps, {
-            mesh = api.make_cube(Z_STEP_SIZE, Z_STEP_SIZE, height),
-            translate = {
-                x = (index - 2) * Z_STEP_SPACING - Z_STEP_SIZE / 2.0,
-                y = -Z_STEP_SIZE / 2.0
-            }
-        })
-    end
-    return steps
+local function add_gauge(model_file)
+    return api.project:add_object {
+        mesh = api.load_stl(model_file)
+    }
 end
 
 function execute(opts)
@@ -45,31 +37,29 @@ function execute(opts)
         error("Select at least one calibration gauge: XY or Z")
     end
 
+    local model_file
     if opts.generate_xy and opts.generate_z then
-        api.project:add_object {
-            mesh = api.load_stl("dimensional_accuracy_gauge.stl"),
-            other_volumes = z_steps()
-        }
+        model_file = XYZ_MODEL_FILE
     elseif opts.generate_xy then
-        api.project:add_object {
-            mesh = api.load_stl("dimensional_accuracy_gauge.stl")
-        }
+        model_file = XY_MODEL_FILE
     else
-        local steps = z_steps()
-        local first_step = table.remove(steps, 1)
-        first_step.other_volumes = steps
-        api.project:add_object(first_step)
+        model_file = Z_MODEL_FILE
     end
 
+    add_gauge(model_file)
+
     if opts.generate_xy then
-        print("Dimensional accuracy XY grid gauge generated")
+        print("Dimensional accuracy XY-A grid gauge generated")
         print("Horizontal bars from bottom to top: X40, X80, X120")
         print("Vertical bars from left to right: Y40, Y80, Y120")
         print("Measure between the flat end faces near the middle of the height")
     end
     if opts.generate_z then
-        print("Dimensional accuracy Z40/Z80/Z120 step gauge generated")
+        print("Dimensional accuracy Z-B stepped plate generated")
         print("Z steps from left to right: Z40, Z80, Z120")
-        print("Measure each step height after it cools to room temperature")
+        print("Measure from the common base datum to each upper step")
+    end
+    if opts.generate_xy and opts.generate_z then
+        print("XY and Z are pre-arranged with a 10 mm gap in one slicer object")
     end
 end

@@ -6,6 +6,9 @@
 # Never commit private signing keys
 *.private.pem
 
+# Generated language caches
+__pycache__/
+
 # Editor and OS files
 .idea/
 .vscode/
