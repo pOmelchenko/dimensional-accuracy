@@ -191,6 +191,14 @@ recorded physical trials establish suitable thresholds. XY and Z calculations
 are independent, so either one or both can be run without validating or
 changing the unselected axis.
 
+## Research tooling
+
+Prepare the versioned geometry-selection experiment with `python3 tools/trial.py`.
+The [trial guide](prototypes/README.md) covers deterministic schedules, immutable
+protocol/provenance, raw observations and the distinction between pilot and full
+v1. The [decision log](research/decisions.md) records changes to research meaning.
+No physical validation is implied by generating or validating a trial plan.
+
 ## Model source and prototypes
 
 All models are generated from `model/dimensional_accuracy_gauge.scad`. Product
