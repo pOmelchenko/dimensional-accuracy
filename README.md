@@ -5,7 +5,7 @@ generates an XY measurement grid and estimates dimensional error independently
 for the X, Y, and optional Z axes:
 
 ```text
-measured = scale * nominal + fixed_offset
+measured = scale * nominal + observed_additive_term
 ```
 
 > **Not ready for production presets.** The meshes pass automated geometry
@@ -153,22 +153,31 @@ accepting any changed setting.
 
 For each axis, the plugin uses ordinary least squares to fit a straight line
 to the per-span medians at nominal lengths of 40, 80, and 120 mm. The slope represents scale error,
-while the intercept represents a fixed dimensional offset. For X/Y this is
-the combined offset of the two outer contours; for Z it captures effects such
-as the first layer and layer-height rounding. The fit produces:
+while the intercept is an **observed additive term**. External dimensions alone
+do not identify its cause: contour construction, seam, jaw placement and other
+effects can produce similar values. For Z, first-layer/datum and layer-height
+effects are additional possibilities. The fit produces:
 
 - independent X and Y scale corrections;
 - a common `filament_shrinkage_compensation_xy` value;
-- a common `xy_size_compensation` value;
+- a hypothetical `xy_size_compensation` value, explicitly diagnostic only;
 - an optional `filament_shrinkage_compensation_z` value fitted from Z40, Z80,
   and Z120;
-- the fixed Z offset and fit RMS, reported in the process log but not applied
+- the observed additive Z term and fit RMS, reported in the process log but not applied
   because PrusaSlicer has no corresponding Z-offset compensation setting.
 
 The calculation is not tied to this particular mesh. Any gauge that supplies
 the same three external nominal spans per axis can be used. The model assumes
 that error is the sum of a length-dependent scale term and one constant
 offset; it does not model nonlinear or feature-specific error.
+
+Solver 2.0.0 also reports M0 (scale only) beside M1 (scale plus additive term),
+including residuals, SSE/RMS and residual degrees of freedom. It does not choose
+a physical winner from lower RMS. Existing scale proposals are explicitly
+labelled legacy M1 diagnostics; M0 values are shown alongside them. XY size
+compensation has no apply control, and stale contour-apply requests are rejected
+before any settings access. See the [model derivation and error budget](research/models-v2.md)
+and [setting semantics](research/settings-semantics.md).
 
 Before reporting a selected plan or attempting the first preset write, the
 calculator applies these provisional software sanity limits to every selected
@@ -208,7 +217,8 @@ python3 tools/result.py replay measurement-result.json --lua /path/to/lua
 Replay performs no host reads or writes. Successful reproduction is not physical
 verification. Single-value input remains preview-only; applying requires 3–5
 re-seats at every selected dimension. Measurement defaults are intentionally empty.
-See the [result schema and analytical note](research/results-v1.md).
+See the [result schema and analytical note](research/results-v1.md). Schema 1.1.0
+adds the solver-2 diagnostics; saved solver-1/schema-1.0 results remain replayable.
 
 ## Research tooling
 
@@ -278,9 +288,9 @@ access, repeatability, and systematic offset.
 - The plugin's write attempts target the active settings of the current project;
   it does not create a saved user preset.
 - The regression uses equal measurement weights and does not automatically
-  discard or down-weight an outlier. If its effect breaches a residual, RMS, or
-  other provisional sanity limit, the complete measurement set is rejected;
-  otherwise the point remains in the fit.
+  delete a raw observation. It fits per-span medians; all readings remain in
+  the saved raw input and descriptive statistics. If an aggregated span breaches
+  a residual, RMS or other provisional sanity limit, the selected plan is rejected.
 - Plugin API 1.0.0 cannot arrange objects after adding them. The combined STL
   avoids overlap, but its XY and Z shells are one slicer object and cannot be
   moved or deleted independently.

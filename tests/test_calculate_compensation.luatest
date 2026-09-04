@@ -210,7 +210,7 @@ test("metadata uses safe controls and defaults", function()
         assert_equal(params[name].type, "string", name .. " control type")
     end
     assert_equal(params.apply_uniform_scale.default, false, "XY scale default")
-    assert_equal(params.apply_contour_offset.default, false, "XY contour default")
+    assert_equal(params.apply_contour_offset, nil, "contour is diagnostic only")
     assert_equal(params.apply_z_shrinkage.default, false, "Z apply default")
     assert_equal(params.confirm_zero_compensation.type, "bool", "confirmation type")
     assert_equal(params.confirm_zero_compensation.default, false, "confirmation default")
@@ -272,7 +272,7 @@ test("RMS gate rejects a nonlinear fit", function()
 end)
 
 test("intercept gate rejects a large fixed offset", function()
-    assert_error_contains("fitted fixed offset", function()
+    assert_error_contains("fitted observed additive term", function()
         core.fit_axis("X", {41.1, 81.1, 121.1})
     end)
 end)
@@ -316,7 +316,6 @@ test("nonzero baseline blocks every selected write", function()
     local opts = default_opts()
     opts.calibrate_z = true
     opts.apply_uniform_scale = true
-    opts.apply_contour_offset = true
     opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
@@ -371,7 +370,6 @@ test("invalid Z prevents otherwise valid XY writes", function()
     local opts = default_opts()
     opts.calibrate_z = true
     opts.apply_uniform_scale = true
-    opts.apply_contour_offset = true
     opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
@@ -387,7 +385,6 @@ test("valid combined apply reports unverified write attempts", function()
     local opts = default_opts()
     opts.calibrate_z = true
     opts.apply_uniform_scale = true
-    opts.apply_contour_offset = true
     opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
@@ -396,13 +393,11 @@ test("valid combined apply reports unverified write attempts", function()
     opts.z40, opts.z80, opts.z120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
     local ok, error_message, calls, logs = run_execute(opts)
     assert_true(ok, error_message)
-    assert_equal(#calls, 3, "combined write count")
+    assert_equal(#calls, 2, "combined write count")
     assert_equal(calls[1].name, "filament_shrinkage_compensation_xy")
     assert_near(calls[1].value, 0.25, 1e-10, "XY shrinkage")
-    assert_equal(calls[2].name, "xy_size_compensation")
-    assert_near(calls[2].value, -0.3 / (2.0 * 0.9975), 1e-10, "XY size")
-    assert_equal(calls[3].name, "filament_shrinkage_compensation_z")
-    assert_near(calls[3].value, 0.2, 1e-10, "Z shrinkage")
+    assert_equal(calls[2].name, "filament_shrinkage_compensation_z")
+    assert_near(calls[2].value, 0.2, 1e-10, "Z shrinkage")
     assert_contains(joined_logs(logs), "Attempted active-setting write", "attempt log")
     assert_contains(
         joined_logs(logs),
@@ -439,12 +434,13 @@ end)
 test("setter failure makes an unverified best-effort rollback attempt", function()
     local opts = default_opts()
     opts.apply_uniform_scale = true
-    opts.apply_contour_offset = true
+    opts.calibrate_z = true
+    opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
 
     local ok, error_message, calls = run_execute(opts, nil, {
-        xy_size_compensation = 1
+        filament_shrinkage_compensation_z = 1
     })
 
     assert_equal(ok, false, "setter failure result")
@@ -454,8 +450,8 @@ test("setter failure makes an unverified best-effort rollback attempt", function
     assert_not_contains(error_message, "rolled back to zero", "false rollback claim")
     assert_equal(#calls, 4, "write and rollback attempt count")
     assert_equal(calls[1].name, "filament_shrinkage_compensation_xy")
-    assert_equal(calls[2].name, "xy_size_compensation")
-    assert_equal(calls[3].name, "xy_size_compensation")
+    assert_equal(calls[2].name, "filament_shrinkage_compensation_z")
+    assert_equal(calls[3].name, "filament_shrinkage_compensation_z")
     assert_near(calls[3].value, 0.0, 1e-12, "failed setting rollback")
     assert_equal(calls[4].name, "filament_shrinkage_compensation_xy")
     assert_near(calls[4].value, 0.0, 1e-12, "first setting rollback")
@@ -464,12 +460,13 @@ end)
 test("rollback exception is reported without claiming rollback state", function()
     local opts = default_opts()
     opts.apply_uniform_scale = true
-    opts.apply_contour_offset = true
+    opts.calibrate_z = true
+    opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
 
     local ok, error_message, calls = run_execute(opts, nil, {
-        xy_size_compensation = 2
+        filament_shrinkage_compensation_z = 2
     })
 
     assert_equal(ok, false, "rollback failure result")
@@ -532,6 +529,76 @@ test("structured result preserves provenance and keeps verification separate", f
     assert_equal(record.apply_status, "NOT_REQUESTED")
     assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
     assert_equal(#calls, 0)
+end)
+
+test("contour apply is rejected even with explicit host and baseline confirmations", function()
+    local opts = default_opts()
+    opts.apply_contour_offset = true
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    local ok, message, calls, logs, reads = run_execute(opts)
+    assert_equal(ok, false)
+    assert_contains(message, "diagnostic only")
+    assert_equal(#calls, 0)
+    assert_equal(reads, 0)
+    assert_contains(joined_logs(logs), '"apply_contour_offset":true')
+end)
+
+test("pure scale makes M0 and M1 agree without establishing a physical winner", function()
+    local opts = default_opts()
+    for _, axis in ipairs({"x", "y"}) do
+        for _, nominal in ipairs({40, 80, 120}) do
+            opts[axis .. nominal] = tostring(.998 * nominal)
+        end
+    end
+    local models = core.calculate_plan(opts).xy.x.models
+    assert_near(models.M0.slope, .998, 1e-12)
+    assert_near(models.M1.slope, .998, 1e-12)
+    assert_near(models.M1.observed_additive_term_mm, 0, 1e-12)
+    assert_equal(models.M0.residual_degrees_of_freedom, 2)
+    assert_equal(models.M1.residual_degrees_of_freedom, 1)
+    assert_equal(models.selection_status, "NOT_ESTABLISHED")
+end)
+
+test("M1 recovers synthetic parameters and never has larger SSE than nested M0", function()
+    for index = 1, 100 do
+        local slope = .995 + index * .0001
+        local additive = -.4 + index * .008
+        local opts = default_opts()
+        for _, axis in ipairs({"x", "y"}) do
+            for _, nominal in ipairs({40, 80, 120}) do
+                opts[axis .. nominal] = string.format("%.9f", slope * nominal + additive)
+            end
+        end
+        local models = core.calculate_plan(opts).xy.x.models
+        assert_near(models.M1.slope, slope, 1e-10)
+        assert_near(models.M1.observed_additive_term_mm, additive, 1e-9)
+        assert_near(models.M0.slope, slope + additive * 240 / 22400, 1e-10)
+        assert_true(models.M1.sse_mm2 <= models.M0.sse_mm2 + 1e-15)
+        assert_equal(models.contour_correction_status, "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE")
+    end
+end)
+
+test("middle span affects curvature and residuals but not M1 slope", function()
+    local opts = default_opts()
+    opts.x80 = "80.06"
+    local models = core.calculate_plan(opts).xy.x.models
+    assert_near(models.M1.slope, 1, 1e-12)
+    assert_near(models.curvature_hint_mm, .06, 1e-12)
+    assert_near(models.M1.residuals_mm[2], .04, 1e-12)
+    assert_true(models.M1.sse_mm2 <= models.M0.sse_mm2)
+end)
+
+test("solver v1 replay excludes later diagnostics and preserves the frozen plan shape", function()
+    local opts = default_opts()
+    local legacy = core.calculate_plan_version(opts, "1.0.0")
+    local current = core.calculate_plan_version(opts, "2.0.0")
+    assert_equal(legacy.xy.x.models, nil)
+    assert_equal(legacy.xy.contour_status, nil)
+    assert_equal(current.xy.contour_status, "DIAGNOSTIC_ONLY")
+    assert_near(legacy.xy.x.slope, current.xy.x.slope, 1e-12)
+    assert_error_contains("Unsupported solver", function() core.calculate_plan_version(opts, "999") end)
 end)
 
 for _, item in ipairs(tests) do

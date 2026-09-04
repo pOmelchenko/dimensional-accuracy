@@ -47,12 +47,6 @@ info = {
             default = false
         },
         {
-            name = "apply_contour_offset",
-            label = "Apply XY size compensation",
-            type = "bool",
-            default = false
-        },
-        {
             name = "apply_z_shrinkage",
             label = "Apply Z shrinkage compensation",
             type = "bool",
@@ -74,7 +68,7 @@ info = {
 }
 
 -- BEGIN GENERATED ARTIFACT SPEC
-local PLUGIN_VERSION = "0.5.0"
+local PLUGIN_VERSION = "0.6.0"
 local NOMINAL_LENGTHS = {40, 80, 120}
 local GAUGE_ARTIFACTS = {
     xy = {id = "DA-XY-A", revision = 1},
@@ -82,8 +76,8 @@ local GAUGE_ARTIFACTS = {
     xyz = {id = "DA-XYZ-AB", revision = 1},
 }
 -- END GENERATED ARTIFACT SPEC
-local SOLVER_VERSION = "1.0.0"
-local RESULT_SCHEMA_VERSION = "1.0.0"
+local SOLVER_VERSION = "2.0.0"
+local RESULT_SCHEMA_VERSION = "1.1.0"
 
 local MIN_SHRINKAGE_PERCENT = -10.0
 local MAX_SHRINKAGE_PERCENT = 10.0
@@ -344,7 +338,7 @@ local function fit_axis(axis, measured)
     end
     if math.abs(intercept) > MAX_ABS_INTERCEPT_MM then
         error(string.format(
-            "%s fitted fixed offset %.4f mm exceeds the +/-%.2f mm " ..
+            "%s fitted observed additive term %.4f mm exceeds the +/-%.2f mm " ..
             "quality limit; inspect first-layer effects and measurements.",
             axis,
             intercept,
@@ -403,7 +397,7 @@ local function calculate_z(opts)
     }
 end
 
-local function calculate_plan(opts)
+local function calculate_plan_v1(opts)
     local plan = {}
     if opts.calibrate_xy then
         plan.xy = calculate_xy(opts)
@@ -412,6 +406,63 @@ local function calculate_plan(opts)
         plan.z = calculate_z(opts)
     end
     return plan
+end
+
+local function diagnostic_model(measured, slope, additive_term, parameters)
+    local residuals, sse, maximum = {}, 0, 0
+    for i, nominal in ipairs(NOMINAL_LENGTHS) do
+        residuals[i] = measured[i] - slope * nominal - additive_term
+        sse = sse + residuals[i] ^ 2
+        maximum = math.max(maximum, math.abs(residuals[i]))
+    end
+    return {
+        slope = slope, observed_additive_term_mm = additive_term,
+        residuals_mm = residuals, sse_mm2 = sse, rms_mm = math.sqrt(sse / #measured),
+        max_residual_mm = maximum, parameters = parameters,
+        residual_degrees_of_freedom = #measured - parameters,
+        descriptive_shrinkage_percent = 100 * (1 - slope)
+    }
+end
+
+local function compare_models(fit)
+    local measured, sum_nm, sum_nn, maximum_range = {}, 0, 0, 0
+    for i, observation in ipairs(fit.measurements) do
+        measured[i] = observation.median_mm
+        sum_nm = sum_nm + NOMINAL_LENGTHS[i] * measured[i]
+        sum_nn = sum_nn + NOMINAL_LENGTHS[i] ^ 2
+        maximum_range = math.max(maximum_range, observation.range_mm)
+    end
+    local m0 = diagnostic_model(measured, sum_nm / sum_nn, 0, 1)
+    local m1 = diagnostic_model(measured, fit.slope, fit.intercept, 2)
+    return {
+        M0 = m0, M1 = m1,
+        rms_reduction_mm = m0.rms_mm - m1.rms_mm,
+        slope_difference = m1.slope - m0.slope,
+        curvature_hint_mm = measured[2] - (measured[1] + measured[3]) / 2,
+        maximum_repeat_range_mm = maximum_range,
+        selection_status = "NOT_ESTABLISHED",
+        contour_correction_status = "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE",
+        reason = "M1 has only one residual degree of freedom. Smaller RMS does not establish a physical cause or a better correction; independent prints and a correction trial are required.",
+        descriptive_proposal_model = "M1_LEGACY",
+        uncertainty_status = "NOT_ESTIMATED"
+    }
+end
+
+local function calculate_plan(opts)
+    local plan = calculate_plan_v1(opts)
+    if plan.xy then
+        plan.xy.x.models = compare_models(plan.xy.x)
+        plan.xy.y.models = compare_models(plan.xy.y)
+        plan.xy.contour_status = "DIAGNOSTIC_ONLY"
+    end
+    if plan.z then plan.z.fit.models = compare_models(plan.z.fit) end
+    return plan
+end
+
+local function calculate_plan_version(opts, version)
+    if version == "1.0.0" then return calculate_plan_v1(opts) end
+    if version == SOLVER_VERSION then return calculate_plan(opts) end
+    error("Unsupported solver version: " .. tostring(version))
 end
 
 local function current_fff_settings(calibrate_xy, calibrate_z)
@@ -573,15 +624,26 @@ local function print_axis_result(axis, result)
         ))
     end
     print(string.format(
-        "%s: measured scale %.6f, correction scale %.4f%%, contour %.4f mm, " ..
+        "%s: measured scale %.6f, correction scale %.4f%%, observed additive term %.4f mm, " ..
         "RMS %.4f mm, max residual %.4f mm",
         axis,
         result.slope,
         result.correction_scale * 100.0,
-        result.contour_compensation,
+        result.intercept,
         result.rms,
         result.max_residual
     ))
+    if result.models then
+        for _, name in ipairs({"M0", "M1"}) do
+            local model = result.models[name]
+            print(string.format(
+                "%s %s: slope %.9f, observed additive term %.6f mm, RMS %.6f mm, SSE %.9f mm^2, residual dof %d",
+                axis, name, model.slope, model.observed_additive_term_mm,
+                model.rms_mm, model.sse_mm2, model.residual_degrees_of_freedom
+            ))
+        end
+        print(axis .. " model selection: NOT_ESTABLISHED. " .. result.models.reason)
+    end
 end
 
 local function print_plan(plan)
@@ -595,7 +657,7 @@ local function print_plan(plan)
             plan.xy.shrinkage_percent
         ))
         print(string.format(
-            "Common XY size compensation: %.4f mm",
+            "Hypothetical XY size compensation (diagnostic only): %.4f mm",
             plan.xy.xy_size_compensation
         ))
     end
@@ -603,7 +665,7 @@ local function print_plan(plan)
         local z = plan.z.fit
         print_axis_result("Z", z)
         print(string.format(
-            "Z: measured scale %.6f, correction scale %.4f%%, fixed offset " ..
+            "Z: measured scale %.6f, correction scale %.4f%%, observed additive term " ..
             "%.4f mm, RMS %.4f mm, max residual %.4f mm",
             z.slope,
             z.correction_scale * 100.0,
@@ -627,14 +689,6 @@ local function requested_operations(settings, plan, opts)
             name = "filament_shrinkage_compensation_xy",
             value = plan.xy.shrinkage_percent,
             label = "filament shrinkage compensation XY"
-        }
-    end
-    if plan.xy ~= nil and opts.apply_contour_offset then
-        operations[#operations + 1] = {
-            settings = settings.print_settings,
-            name = "xy_size_compensation",
-            value = plan.xy.xy_size_compensation,
-            label = "XY size compensation"
         }
     end
     if plan.z ~= nil and opts.apply_z_shrinkage then
@@ -804,6 +858,9 @@ local function execute_run(opts, record)
         error("Select at least one calibration axis: XY or Z")
     end
     validate_apply_selection(opts)
+    if opts.apply_contour_offset then
+        error("XY size compensation is diagnostic only: outer spans do not establish a physical contour error; no settings were changed")
+    end
 
     local apply_requested =
         (opts.calibrate_xy and
@@ -849,6 +906,7 @@ local function execute_run(opts, record)
     record.artifacts = {}
     if opts.calibrate_xy then record.artifacts.xy = GAUGE_ARTIFACTS.xy end
     if opts.calibrate_z then record.artifacts.z = GAUGE_ARTIFACTS.z end
+    record.warnings[#record.warnings + 1] = "M0/M1 model selection is not established; legacy M1 scale proposals remain experimental and the observed additive term is diagnostic only"
     record.artifact_identity_source = "expected_selected_gauge; match the physical print label"
     record.proposed_settings = json_array()
     local function proposal(key, owner, baseline_key, value, requested)
@@ -861,7 +919,8 @@ local function execute_run(opts, record)
     end
     if plan.xy then
         proposal("filament_shrinkage_compensation_xy", "filament_slot_1", "xy_shrinkage", plan.xy.shrinkage_percent, opts.apply_uniform_scale)
-        proposal("xy_size_compensation", "print", "xy_size", plan.xy.xy_size_compensation, opts.apply_contour_offset)
+        proposal("xy_size_compensation", "print", "xy_size", plan.xy.xy_size_compensation, false)
+        record.proposed_settings[#record.proposed_settings].status = "DIAGNOSTIC_ONLY"
     end
     if plan.z then
         proposal("filament_shrinkage_compensation_z", "filament_slot_1", "z_shrinkage", plan.z.shrinkage_percent, opts.apply_z_shrinkage)
@@ -894,6 +953,7 @@ function execute(opts)
     }
     -- Whitelist declared inputs so foreign host values cannot enter serialization.
     for _, param in ipairs(info.params) do record.inputs[param.name] = opts[param.name] end
+    if opts.apply_contour_offset ~= nil then record.inputs.apply_contour_offset = opts.apply_contour_offset end
     local ok, error_message = pcall(execute_run, opts, record)
     if not ok then
         record.error = tostring(error_message)
@@ -913,6 +973,8 @@ if type(dimensional_accuracy_test) == "table" then
     dimensional_accuracy_test.checked_shrinkage_for_scale =
         checked_shrinkage_for_scale
     dimensional_accuracy_test.calculate_plan = calculate_plan
+    dimensional_accuracy_test.calculate_plan_version = calculate_plan_version
+    dimensional_accuracy_test.compare_models = compare_models
     dimensional_accuracy_test.config_number = config_number
     dimensional_accuracy_test.parse_repeated_measurement = parse_repeated_measurement
     dimensional_accuracy_test.json_encode = json_encode

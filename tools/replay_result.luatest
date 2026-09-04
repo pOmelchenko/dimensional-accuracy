@@ -5,8 +5,5 @@ dofile(arg[1])
 local core = dimensional_accuracy_test
 local opts = dofile(arg[2])
 local requested_version = arg[3]
-if requested_version ~= core.solver_version then
-    error("Unsupported solver version: " .. tostring(requested_version))
-end
-local plan = core.calculate_plan(opts)
+local plan = core.calculate_plan_version(opts, requested_version)
 print(core.json_encode(plan))

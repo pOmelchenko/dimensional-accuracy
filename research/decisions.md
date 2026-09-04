@@ -66,3 +66,22 @@
 - Consequence: raw observations and MPE remain separate from model uncertainty.
   Reproduction cannot claim an applied preset or verified physical correction.
 - Revisit the aggregation rule only with a new solver version and recorded data.
+
+## D005 — Compare nested models without a causal or automatic selection claim
+
+- Date: 2026-09-04. Status: ACCEPTED. Plugin 0.6.0, solver 2.0.0,
+  result schema 1.1.0 (additive diagnostics; v1 replay remains supported).
+- Decision: display both M0 and M1 with residuals, SSE/RMS, degrees of freedom
+  and unresolved model/uncertainty status. Preserve explicitly qualified legacy
+  scale proposals; remove contour apply from this external-span workflow.
+- Alternatives: select the smaller training RMS automatically, or silently
+  switch all historical arithmetic to M0. Nested models make the first choice
+  unjustified, and the second would change old results without physical evidence.
+- Evidence: `models-v2.md` derivations/error budget, 100 synthetic parameter
+  cases and the frozen v1 compatibility fixture; settings sources are recorded
+  in `settings-semantics.md`. No physical model-selection evidence exists.
+- Consequence: less RMS cannot become a physical PASS; old contour requests
+  are refused before writes. Neither solver replay nor geometry selection
+  produces VERIFIED calibration.
+- Revisit after independent-print parameter stability, feature identifiability
+  and a preregistered correction/verification trial.

@@ -33,7 +33,7 @@ def strict_json(text):
 
 
 def validate_record(record):
-    if not isinstance(record, dict) or record.get("schema_version") != "1.0.0":
+    if not isinstance(record, dict) or record.get("schema_version") not in ("1.0.0", "1.1.0"):
         raise ValueError("unsupported structured result schema")
     for key in ("solver_version", "plugin_version", "workflow_state", "apply_status", "readback_status", "verification_status"):
         if not isinstance(record.get(key), str):
