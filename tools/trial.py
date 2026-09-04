@@ -23,6 +23,7 @@ PRINT_COLUMNS = ["print_id", "print_batch_id", "blind_model_id", "artifact_id",
                  "gcode_sha256", "project_sha256", "bed_x_mm", "bed_y_mm",
                  "print_time_min", "material_g"]
 INSTRUMENT_COLUMNS = ["caliper_id", "resolution_mm", "mpe_mm", "asset_id", "calibration_status"]
+DEVIATION_COLUMNS = ["event_id", "scope_id", "reason", "action"]
 
 
 def read_csv(path):
@@ -159,6 +160,7 @@ def initialize(directory, trial_id, seed, families=("xy", "z"), calipers=3):
                for i in range(1, calipers + 1)])
     write_csv(directory / "schedule.csv", config["schedule_columns"], schedule)
     write_csv(directory / "measurements.csv", config["measurement_columns"], [])
+    write_csv(directory / "deviations.csv", DEVIATION_COLUMNS, [])
     (directory / "photos").mkdir()
     return config, schedule
 
@@ -231,6 +233,8 @@ def validate_plan(directory, ready=False):
 def freeze(directory):
     directory = Path(directory)
     validate_plan(directory, ready=True)
+    if json.loads((directory / "artifact-spec.json").read_text()) != load_spec():
+        raise ValueError("freeze with the source catalog used to generate this trial; do not relabel artifact definitions")
     if read_csv(directory / "measurements.csv"):
         raise ValueError("cannot preregister a trial after observations exist")
     with (directory / "checksums.sha256").open("x", encoding="utf-8") as stream:

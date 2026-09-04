@@ -85,3 +85,18 @@
   produces VERIFIED calibration.
 - Revisit after independent-print parameter stability, feature identifiability
   and a preregistered correction/verification trial.
+
+## D006 — Close provenance and display-resolution validation gaps
+
+- Date: 2026-09-05. Status: ACCEPTED. Analysis version 1.0.1; protocol/margins
+  unchanged; solver arithmetic unchanged.
+- Decision: require raw display increments consistent with instrument resolution,
+  preserve nil host baseline reads as explicitly unknown, and reject unsupported
+  verification claims during export. Freeze only an unmodified source catalog;
+  replay continues to use the trial's frozen copy after later catalog changes.
+- Evidence: integration tests for nil readouts, precision inconsistent with the
+  instrument and internal SCAD/calculator nominal disagreement.
+- Consequence: falsely precise trial inputs are rejected before comparison;
+  old reports retain their original analysis version. No retrospective PASS.
+- Revisit only if a future measurement backend has a different declared
+  quantization contract, with a new schema/protocol.

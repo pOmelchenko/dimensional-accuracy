@@ -62,6 +62,16 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "revision"):
             spec.verifier_args(data, data["artifacts"][-1])
 
+    def test_internal_nominal_mismatch_cannot_be_synced_away(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.make_copy(directory)
+            path = root / "model/artifacts.json"
+            data = json.loads(path.read_text())
+            data["nominal_lengths_mm"] = [20, 40, 60]
+            path.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, "nominal definitions differ"):
+                spec.check(root, write=True)
+
 
 if __name__ == "__main__":
     unittest.main()

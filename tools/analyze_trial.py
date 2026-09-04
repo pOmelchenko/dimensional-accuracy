@@ -11,11 +11,12 @@ import json
 import math
 import random
 import statistics as stats
+from decimal import Decimal
 from pathlib import Path
 
 from trial import finite, read_csv, verify_frozen, write_json
 
-ANALYSIS_VERSION = "1.0.0"
+ANALYSIS_VERSION = "1.0.1"
 EPSILON = 1e-10  # Numerical roundoff only, not an additional engineering margin.
 
 
@@ -129,6 +130,15 @@ def validate_observations(directory, config, schedule):
         if row["installation_status"] == "SKIPPED":
             continue
         before, after = float(row["zero_before_mm"]), float(row["zero_after_mm"])
+        resolution = Decimal(instruments[row["caliper_id"]]["resolution_mm"])
+        for key in ("zero_before_mm", "zero_after_mm", "measured_mm"):
+            if row[key]:
+                try:
+                    remainder = Decimal(row[key]) % resolution
+                except ArithmeticError:
+                    raise ValueError(f"{row['observation_id']}: {key} cannot be represented at the declared resolution") from None
+                if remainder != 0:
+                    raise ValueError(f"{row['observation_id']}: {key} is finer than the declared display resolution")
         zero_values[row["block_id"]].add((before, after))
         if abs(after - before) > float(instruments[row["caliper_id"]]["resolution_mm"]) + EPSILON:
             invalid_blocks.add(row["block_id"])

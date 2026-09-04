@@ -601,6 +601,24 @@ test("solver v1 replay excludes later diagnostics and preserves the frozen plan 
     assert_error_contains("Unsupported solver", function() core.calculate_plan_version(opts, "999") end)
 end)
 
+test("nil host readbacks remain readable as unknown in preview JSON", function()
+    install_api({xy_shrinkage=0, xy_size=0, z_shrinkage=0})
+    local bed = api.project:current_bed()
+    local unknown = {value=function() return nil end}
+    bed.material_presets = function() return unknown end
+    bed.print_presets = function() return unknown end
+    local logs = {}
+    print = function(message) logs[#logs + 1] = tostring(message) end
+    local ok, record = pcall(execute, default_opts())
+    print = real_print
+    assert_true(ok, record)
+    assert_equal(record.baseline.xy_shrinkage.known, false)
+    assert_equal(record.baseline.xy_size.known, false)
+    assert_equal(record.proposed_settings[1].delta, nil)
+    assert_equal(record.workflow_state, "ESTIMATED")
+    assert_equal(record.apply_status, "NOT_REQUESTED")
+end)
+
 for _, item in ipairs(tests) do
     executed = executed + 1
     local ok, error_message = pcall(item.callback)

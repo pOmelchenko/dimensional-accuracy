@@ -40,6 +40,12 @@ def validate_record(record):
             raise ValueError(f"missing result field: {key}")
     if not isinstance(record.get("inputs"), dict):
         raise ValueError("missing raw inputs")
+    if record["workflow_state"] not in ("INVALID_INPUT", "ESTIMATED", "APPLY_ATTEMPTED"):
+        raise ValueError("unsupported workflow state for this result schema")
+    if record["apply_status"] not in ("NOT_REQUESTED", "UNCONFIRMED", "ERROR_UNCONFIRMED"):
+        raise ValueError("unsupported apply outcome")
+    if record["verification_status"] != "NOT_VERIFIED" or record["readback_status"] != "NOT_PERFORMED":
+        raise ValueError("these result versions cannot claim host/physical verification")
     return record
 
 

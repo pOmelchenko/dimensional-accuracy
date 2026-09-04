@@ -894,7 +894,11 @@ local function execute_run(opts, record)
     assess_repeats(plan, apply_requested, record)
     local settings = current_fff_settings(opts.calibrate_xy, opts.calibrate_z)
     record.baseline = {}
-    for key, value in pairs(settings.current) do
+    local baseline_keys = {}
+    if opts.calibrate_xy then baseline_keys = {"xy_shrinkage", "xy_size"} end
+    if opts.calibrate_z then baseline_keys[#baseline_keys + 1] = "z_shrinkage" end
+    for _, key in ipairs(baseline_keys) do
+        local value = settings.current[key]
         record.baseline[key] = {raw = tostring(value), numeric = config_number(value),
                                 known = config_number(value) ~= nil}
         if config_number(value) == nil or math.abs(config_number(value)) > ZERO_TOLERANCE then
@@ -926,6 +930,7 @@ local function execute_run(opts, record)
         proposal("filament_shrinkage_compensation_z", "filament_slot_1", "z_shrinkage", plan.z.shrinkage_percent, opts.apply_z_shrinkage)
     end
     for _, warning in ipairs(record.warnings) do print("WARNING: " .. warning) end
+    record.severity = #record.warnings > 0 and "WARN" or "PASS"
     print_plan(plan)
 
     if not apply_requested then

@@ -227,6 +227,8 @@ The [trial guide](prototypes/README.md) covers deterministic schedules, immutabl
 protocol/provenance, raw observations and the distinction between pilot and full
 v1. The [decision log](research/decisions.md) records changes to research meaning.
 No physical validation is implied by generating or validating a trial plan.
+The [implementation audit](research/implementation-status.md) records the five
+milestones, validation results and remaining physical/host release evidence.
 
 ## Model source and prototypes
 

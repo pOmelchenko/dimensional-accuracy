@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import shlex
 import subprocess
@@ -18,6 +19,13 @@ def load_spec(root=ROOT):
     spec = json.loads((root / "model/artifacts.json").read_text())
     if spec["schema_version"] != "1.0.0":
         raise ValueError("unsupported artifact schema")
+    nominals = spec["nominal_lengths_mm"]
+    if nominals != spec["scad_constants"]["nominal_lengths"]:
+        raise ValueError("calculator and SCAD nominal definitions differ")
+    if (len(nominals) != 3 or any(isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) or n <= 0 for n in nominals)
+            or not nominals[0] < nominals[1] < nominals[2]
+            or nominals[1] * 2 != nominals[0] + nominals[2]):
+        raise ValueError("this gauge/solver requires three increasing equally spaced nominal lengths")
     ids = set()
     paths = set()
     for artifact in spec["artifacts"]:
@@ -31,10 +39,14 @@ def load_spec(root=ROOT):
         if len({f["id"] for f in features}) != len(features):
             raise ValueError("duplicate measurement feature")
         for feature in features:
-            if feature["axis"] not in "xyz" or feature["nominal_mm"] <= 0:
+            if feature["axis"] not in ("x", "y", "z") or feature["nominal_mm"] not in nominals:
                 raise ValueError("invalid measurement feature")
             if feature["id"] != f"{feature['axis']}{feature['nominal_mm']}":
                 raise ValueError("feature ID and nominal differ")
+        if artifact["role"] == "control":
+            expected = [(axis, n) for axis in artifact["family"] for n in nominals]
+            if [(f["axis"], f["nominal_mm"]) for f in features] != expected:
+                raise ValueError("control features differ from the calculator nominal definitions")
     return spec
 
 

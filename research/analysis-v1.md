@@ -1,8 +1,14 @@
-# Geometry-selection analysis 1.0.0
+# Geometry-selection analysis 1.0.1
 
 The implemented rules are the frozen [protocol 1.0.0](protocol-v1.md). All
 data are descriptive research observations; geometry selection is never a
 `VERIFIED` calibration. Synthetic tests are not physical evidence.
+
+Version 1.0.1 enforces the existing raw-display rule: measurements and zero
+checks must be multiples of the recorded instrument resolution. Version 1.0.0
+did not check that consistency. Prior reports remain versioned; this fix cannot
+retroactively relabel a prior result. The synthetic precision fixture declares
+0.001 mm resolution and is not presented as a trial with ordinary 0.01 mm calipers.
 
 For values x_i, mean is sum(x_i)/n, sample variance is
 sum((x_i-mean)^2)/(n-1), and MAD is median(abs(x_i-median(x))). Variance is

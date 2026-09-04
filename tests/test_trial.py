@@ -69,6 +69,7 @@ class TrialTests(unittest.TestCase):
                 for key, value in row.items():
                     if value == "":
                         row[key] = "a" * 64 if key.endswith("sha256") else (
+                            "0.001" if key == "resolution_mm" else
                             "0.01" if key.endswith("_mm") or key in ("print_time_min", "material_g") else "synthetic")
             with path.open("w", newline="") as stream:
                 writer = csv.DictWriter(stream, fieldnames=rows[0])

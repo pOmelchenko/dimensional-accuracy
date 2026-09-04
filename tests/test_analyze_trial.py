@@ -67,8 +67,9 @@ class AnalysisTests(unittest.TestCase):
 
     def test_synthetic_superiority_requires_all_gates_and_cost_record(self):
         self.save(self.rows(noise=True))
-        trial.write_csv(self.path / "deviations.csv", ["event_id", "scope_id", "reason", "action"],
-                        [dict(event_id="cost-1", scope_id="z", reason="synthetic preregistered cost met", action="COST_ACCEPTED")])
+        with (self.path / "deviations.csv").open("a", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=trial.DEVIATION_COLUMNS)
+            writer.writerow(dict(event_id="cost-1", scope_id="z", reason="synthetic preregistered cost met", action="COST_ACCEPTED"))
         before = (self.path / "measurements.csv").read_bytes()
         result, observations = analysis.analyze(self.path)
         self.assertEqual(result["families"]["z"]["verdict"], "SUPPORTED")
@@ -147,6 +148,13 @@ class AnalysisTests(unittest.TestCase):
         fit = analysis.axis_fit([40, 80, 120], [40.2, 80.1, 120])
         self.assertAlmostEqual(fit["scale"], .9975)
         self.assertAlmostEqual(fit["observed_additive_term_mm"], .3)
+
+    def test_extra_digits_cannot_invent_instrument_resolution(self):
+        rows = self.rows()
+        rows[0]["measured_mm"] = "40.0001"
+        self.save(rows)
+        with self.assertRaisesRegex(ValueError, "display resolution"):
+            self.validate()
 
 
 if __name__ == "__main__":
