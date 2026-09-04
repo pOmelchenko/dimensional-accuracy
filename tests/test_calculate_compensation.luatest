@@ -1,0 +1,501 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+
+local real_print = print
+local failures = 0
+local executed = 0
+
+local function fail(message)
+    error(message, 2)
+end
+
+local function assert_true(value, message)
+    if not value then
+        fail(message or "expected a true value")
+    end
+end
+
+local function assert_equal(actual, expected, message)
+    if actual ~= expected then
+        fail(string.format(
+            "%s: expected %s, got %s",
+            message or "values differ",
+            tostring(expected),
+            tostring(actual)
+        ))
+    end
+end
+
+local function assert_near(actual, expected, tolerance, message)
+    if math.abs(actual - expected) > tolerance then
+        fail(string.format(
+            "%s: expected %.9f +/- %.9f, got %.9f",
+            message or "values differ",
+            expected,
+            tolerance,
+            actual
+        ))
+    end
+end
+
+local function assert_contains(text, fragment, message)
+    if not tostring(text):find(fragment, 1, true) then
+        fail(string.format(
+            "%s: expected '%s' in '%s'",
+            message or "text differs",
+            fragment,
+            tostring(text)
+        ))
+    end
+end
+
+local function assert_not_contains(text, fragment, message)
+    if tostring(text):find(fragment, 1, true) then
+        fail(string.format(
+            "%s: did not expect '%s' in '%s'",
+            message or "text differs",
+            fragment,
+            tostring(text)
+        ))
+    end
+end
+
+local function assert_error_contains(fragment, callback)
+    local ok, error_message = pcall(callback)
+    if ok then
+        fail("expected an error containing '" .. fragment .. "'")
+    end
+    assert_contains(error_message, fragment, "unexpected error")
+end
+
+local tests = {}
+local function test(name, callback)
+    tests[#tests + 1] = {name = name, callback = callback}
+end
+
+dimensional_accuracy_test = {}
+dofile("calculate_compensation.lua")
+local core = dimensional_accuracy_test
+
+local function default_opts()
+    return {
+        calibrate_xy = true,
+        calibrate_z = false,
+        x40 = "40.00",
+        x80 = "80.00",
+        x120 = "120.00",
+        y40 = "40.00",
+        y80 = "80.00",
+        y120 = "120.00",
+        z40 = "40.00",
+        z80 = "80.00",
+        z120 = "120.00",
+        apply_uniform_scale = false,
+        apply_contour_offset = false,
+        apply_z_shrinkage = false,
+        confirm_zero_compensation = false,
+        confirm_apply_capable_host = false
+    }
+end
+
+local function setting_stub(values, calls, kind, failures, silent_noops)
+    return {
+        value = function(_, name)
+            if values[name] == nil then
+                error("missing stub value: " .. name)
+            end
+            return values[name]
+        end,
+        set = function(_, name, value)
+            calls[#calls + 1] = {kind = kind, name = name, value = value}
+            if failures[name] ~= nil and failures[name] > 0 then
+                failures[name] = failures[name] - 1
+                error("injected setter failure for " .. name)
+            end
+            if silent_noops[name] then
+                return nil
+            end
+            values[name] = value
+            return nil
+        end
+    }
+end
+
+local function install_api(current, failures, silent_noops)
+    local calls = {}
+    local reads = 0
+    failures = failures or {}
+    silent_noops = silent_noops or {}
+    local material_values = {
+        filament_shrinkage_compensation_xy = current.xy_shrinkage,
+        filament_shrinkage_compensation_z = current.z_shrinkage
+    }
+    local print_values = {
+        xy_size_compensation = current.xy_size
+    }
+    local material = setting_stub(
+        material_values,
+        calls,
+        "material",
+        failures,
+        silent_noops
+    )
+    local print_settings = setting_stub(
+        print_values,
+        calls,
+        "print",
+        failures,
+        silent_noops
+    )
+    local bed = {
+        material_presets = function(_, index)
+            assert_equal(index, 0, "material slot")
+            reads = reads + 1
+            return material
+        end,
+        print_presets = function()
+            reads = reads + 1
+            return print_settings
+        end
+    }
+    api = {
+        project = {
+            current_bed = function()
+                reads = reads + 1
+                return bed
+            end
+        }
+    }
+    return calls,
+        function()
+            return reads
+        end,
+        function()
+            return {
+                xy_shrinkage = material_values.filament_shrinkage_compensation_xy,
+                xy_size = print_values.xy_size_compensation,
+                z_shrinkage = material_values.filament_shrinkage_compensation_z
+            }
+        end
+end
+
+local function run_execute(opts, current, failures, silent_noops)
+    local calls, read_count, current_values = install_api(current or {
+        xy_shrinkage = 0.0,
+        xy_size = 0.0,
+        z_shrinkage = 0.0
+    }, failures, silent_noops)
+    local logs = {}
+    print = function(message)
+        logs[#logs + 1] = tostring(message)
+    end
+    local ok, error_message = pcall(execute, opts)
+    print = real_print
+    return ok, error_message, calls, logs, read_count(), current_values()
+end
+
+local function joined_logs(logs)
+    return table.concat(logs, "\n")
+end
+
+test("metadata uses safe controls and defaults", function()
+    assert_contains(info.title, "experimental", "experimental title")
+    local params = {}
+    for _, param in ipairs(info.params) do
+        params[param.name] = param
+    end
+    for _, name in ipairs({
+        "x40", "x80", "x120", "y40", "y80", "y120",
+        "z40", "z80", "z120"
+    }) do
+        assert_equal(params[name].type, "string", name .. " control type")
+    end
+    assert_equal(params.apply_uniform_scale.default, false, "XY scale default")
+    assert_equal(params.apply_contour_offset.default, false, "XY contour default")
+    assert_equal(params.apply_z_shrinkage.default, false, "Z apply default")
+    assert_equal(params.confirm_zero_compensation.type, "bool", "confirmation type")
+    assert_equal(params.confirm_zero_compensation.default, false, "confirmation default")
+    assert_equal(params.confirm_apply_capable_host.type, "bool", "host confirmation type")
+    assert_equal(
+        params.confirm_apply_capable_host.default,
+        false,
+        "host confirmation default"
+    )
+end)
+
+test("measurement parser accepts dot and decimal comma", function()
+    assert_near(core.parse_measurement("X40", " 39.98 "), 39.98, 1e-12)
+    assert_near(core.parse_measurement("X40", "39,98"), 39.98, 1e-12)
+    assert_near(core.parse_measurement("X40", 39.98), 39.98, 1e-12)
+end)
+
+test("measurement parser rejects non-decimal input", function()
+    assert_error_contains("plain decimal number", function()
+        core.parse_measurement("X40", "39.98 mm")
+    end)
+    assert_error_contains("plain decimal number", function()
+        core.parse_measurement("X40", "1e2")
+    end)
+    assert_error_contains("greater than zero", function()
+        core.parse_measurement("X40", "0")
+    end)
+end)
+
+test("fit returns the expected linear model", function()
+    local result = core.fit_axis("X", {40.2, 80.1, 120.0})
+    assert_near(result.slope, 0.9975, 1e-12, "slope")
+    assert_near(result.intercept, 0.3, 1e-12, "intercept")
+    assert_near(result.rms, 0.0, 1e-12, "RMS")
+end)
+
+test("monotonicity gate rejects swapped fields", function()
+    assert_error_contains("must increase with nominal length", function()
+        core.fit_axis("X", {80.0, 40.0, 120.0})
+    end)
+end)
+
+test("nominal-deviation gate rejects an implausible point", function()
+    assert_error_contains("differs from nominal", function()
+        core.fit_axis("X", {34.0, 80.0, 120.0})
+    end)
+end)
+
+test("individual-residual gate rejects an outlier", function()
+    assert_error_contains("individual fit deviation", function()
+        core.fit_axis("X", {40.0, 80.4, 120.0})
+    end)
+end)
+
+test("RMS gate rejects a nonlinear fit", function()
+    assert_error_contains("fit RMS", function()
+        core.fit_axis("X", {40.0, 80.34, 120.0})
+    end)
+end)
+
+test("intercept gate rejects a large fixed offset", function()
+    assert_error_contains("fitted fixed offset", function()
+        core.fit_axis("X", {41.1, 81.1, 121.1})
+    end)
+end)
+
+test("anisotropy gate rejects a common XY scale", function()
+    local opts = default_opts()
+    opts.x40, opts.x80, opts.x120 = "39.96", "79.92", "119.88"
+    opts.y40, opts.y80, opts.y120 = "40.04", "80.08", "120.12"
+    assert_error_contains("anisotropy", function()
+        core.calculate_plan(opts)
+    end)
+end)
+
+test("clamping gate rejects an unsupported result", function()
+    assert_error_contains("Applying a clamped value", function()
+        core.checked_shrinkage_for_scale("Z", 0.89)
+    end)
+end)
+
+test("config values support scalars percentage text and exposed value", function()
+    assert_near(core.config_number(0.0), 0.0, 1e-12)
+    assert_near(core.config_number(" 0% "), 0.0, 1e-12)
+    assert_near(core.config_number({value = 0.25}), 0.25, 1e-12)
+    assert_equal(core.config_number({}), nil, "unreadable config value")
+end)
+
+test("preview never writes and warns about a nonzero baseline", function()
+    local opts = default_opts()
+    local ok, error_message, calls, logs = run_execute(opts, {
+        xy_shrinkage = "1%",
+        xy_size = 0.2,
+        z_shrinkage = 0.0
+    })
+    assert_true(ok, error_message)
+    assert_equal(#calls, 0, "preview writes")
+    assert_contains(joined_logs(logs), "WARNING: Preview assumes", "preview warning")
+    assert_contains(joined_logs(logs), "Preview only: no settings were changed", "preview result")
+end)
+
+test("nonzero baseline blocks every selected write", function()
+    local opts = default_opts()
+    opts.calibrate_z = true
+    opts.apply_uniform_scale = true
+    opts.apply_contour_offset = true
+    opts.apply_z_shrinkage = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    local ok, error_message, calls = run_execute(opts, {
+        xy_shrinkage = 0.0,
+        xy_size = 0.0,
+        z_shrinkage = 0.5
+    })
+    assert_equal(ok, false, "nonzero baseline result")
+    assert_contains(error_message, "requires a gauge printed", "baseline error")
+    assert_equal(#calls, 0, "writes before baseline rejection")
+end)
+
+test("apply requires explicit confirmation of a capable host", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    local ok, error_message, calls, _, reads = run_execute(opts)
+    assert_equal(ok, false, "unsupported host result")
+    assert_contains(error_message, "requires a validated PrusaSlicer build", "host error")
+    assert_equal(#calls, 0, "writes before host confirmation")
+    assert_equal(reads, 0, "preset reads before host confirmation")
+end)
+
+test("apply requires confirmation of how the exact gauge was printed", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.confirm_apply_capable_host = true
+    local ok, error_message, calls, _, reads = run_execute(opts)
+    assert_equal(ok, false, "unconfirmed gauge result")
+    assert_contains(error_message, "this exact gauge was", "gauge confirmation error")
+    assert_equal(#calls, 0, "writes before gauge confirmation")
+    assert_equal(reads, 0, "preset reads before gauge confirmation")
+end)
+
+test("confirmed unreadable percentage baseline can reach a write attempt", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    local confirmed, confirmed_error, confirmed_calls = run_execute(opts, {
+        xy_shrinkage = {},
+        xy_size = 0.0,
+        z_shrinkage = 0.0
+    })
+    assert_true(confirmed, confirmed_error)
+    assert_equal(#confirmed_calls, 1, "confirmed write attempts")
+    assert_equal(confirmed_calls[1].name, "filament_shrinkage_compensation_xy")
+end)
+
+test("invalid Z prevents otherwise valid XY writes", function()
+    local opts = default_opts()
+    opts.calibrate_z = true
+    opts.apply_uniform_scale = true
+    opts.apply_contour_offset = true
+    opts.apply_z_shrinkage = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    opts.z80 = "80.40"
+    local ok, error_message, calls, _, reads = run_execute(opts)
+    assert_equal(ok, false, "invalid Z result")
+    assert_contains(error_message, "individual fit deviation", "invalid Z error")
+    assert_equal(#calls, 0, "writes before all-axis validation")
+    assert_equal(reads, 0, "preset reads before calculation validation")
+end)
+
+test("valid combined apply reports unverified write attempts", function()
+    local opts = default_opts()
+    opts.calibrate_z = true
+    opts.apply_uniform_scale = true
+    opts.apply_contour_offset = true
+    opts.apply_z_shrinkage = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    opts.x40, opts.x80, opts.x120 = "40.20", "80.10", "120.00"
+    opts.y40, opts.y80, opts.y120 = "40,20", "80,10", "120,00"
+    opts.z40, opts.z80, opts.z120 = "39.92", "79.84", "119.76"
+    local ok, error_message, calls, logs = run_execute(opts)
+    assert_true(ok, error_message)
+    assert_equal(#calls, 3, "combined write count")
+    assert_equal(calls[1].name, "filament_shrinkage_compensation_xy")
+    assert_near(calls[1].value, 0.25, 1e-10, "XY shrinkage")
+    assert_equal(calls[2].name, "xy_size_compensation")
+    assert_near(calls[2].value, -0.3 / (2.0 * 0.9975), 1e-10, "XY size")
+    assert_equal(calls[3].name, "filament_shrinkage_compensation_z")
+    assert_near(calls[3].value, 0.2, 1e-10, "Z shrinkage")
+    assert_contains(joined_logs(logs), "Attempted active-setting write", "attempt log")
+    assert_contains(
+        joined_logs(logs),
+        "does not confirm persistence or slicing-state updates",
+        "unverified status"
+    )
+    assert_not_contains(joined_logs(logs), "Applied ", "false apply claim")
+end)
+
+test("nil-returning silent no-op is never reported as applied", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    opts.x40, opts.x80, opts.x120 = "39.92", "79.84", "119.76"
+    opts.y40, opts.y80, opts.y120 = "39.92", "79.84", "119.76"
+
+    local ok, error_message, calls, logs, _, current = run_execute(
+        opts,
+        nil,
+        nil,
+        {filament_shrinkage_compensation_xy = true}
+    )
+
+    assert_true(ok, error_message)
+    assert_equal(#calls, 1, "silent write attempt count")
+    assert_near(calls[1].value, 0.2, 1e-10, "attempted value")
+    assert_near(current.xy_shrinkage, 0.0, 1e-12, "silent no-op state")
+    assert_contains(joined_logs(logs), "host returned no status", "nil setter status")
+    assert_contains(joined_logs(logs), "Manually inspect", "manual verification")
+    assert_not_contains(joined_logs(logs), "Applied ", "silent no-op apply claim")
+end)
+
+test("setter failure makes an unverified best-effort rollback attempt", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.apply_contour_offset = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+
+    local ok, error_message, calls = run_execute(opts, nil, {
+        xy_size_compensation = 1
+    })
+
+    assert_equal(ok, false, "setter failure result")
+    assert_contains(error_message, "Best-effort rollback calls", "rollback attempt")
+    assert_contains(error_message, "cannot be confirmed", "unverified rollback")
+    assert_contains(error_message, "may be partially changed", "partial-state warning")
+    assert_not_contains(error_message, "rolled back to zero", "false rollback claim")
+    assert_equal(#calls, 4, "write and rollback attempt count")
+    assert_equal(calls[1].name, "filament_shrinkage_compensation_xy")
+    assert_equal(calls[2].name, "xy_size_compensation")
+    assert_equal(calls[3].name, "xy_size_compensation")
+    assert_near(calls[3].value, 0.0, 1e-12, "failed setting rollback")
+    assert_equal(calls[4].name, "filament_shrinkage_compensation_xy")
+    assert_near(calls[4].value, 0.0, 1e-12, "first setting rollback")
+end)
+
+test("rollback exception is reported without claiming rollback state", function()
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.apply_contour_offset = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+
+    local ok, error_message, calls = run_execute(opts, nil, {
+        xy_size_compensation = 2
+    })
+
+    assert_equal(ok, false, "rollback failure result")
+    assert_contains(error_message, "rollback calls also raised errors", "rollback failure")
+    assert_contains(error_message, "cannot be confirmed", "unverified rollback")
+    assert_contains(error_message, "may be partially changed", "partial-state warning")
+    assert_not_contains(error_message, "rolled back to zero", "false rollback claim")
+    assert_equal(#calls, 4, "failed rollback attempt count")
+    assert_equal(calls[4].name, "filament_shrinkage_compensation_xy")
+    assert_near(calls[4].value, 0.0, 1e-12, "earlier rollback call value")
+end)
+
+for _, item in ipairs(tests) do
+    executed = executed + 1
+    local ok, error_message = pcall(item.callback)
+    if ok then
+        real_print("ok " .. executed .. " - " .. item.name)
+    else
+        failures = failures + 1
+        real_print("not ok " .. executed .. " - " .. item.name)
+        real_print("  " .. tostring(error_message))
+    end
+end
+
+if failures > 0 then
+    error(string.format("%d of %d calculator tests failed", failures, executed))
+end
+
+real_print(string.format("All %d calculator tests passed", executed))

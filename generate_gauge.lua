@@ -4,7 +4,7 @@
 info = {
     id = "dev.omelchenko.dimensional-accuracy.generate",
     type = "project.plugin",
-    title = "Generate dimensional accuracy gauge",
+    title = "Generate dimensional accuracy gauge (experimental)",
     menu = "Calibration/Dimensional accuracy/1. Generate gauge",
     params = {
         {
@@ -28,7 +28,13 @@ local XYZ_MODEL_FILE = "dimensional_accuracy_xyz_gauge.stl"
 
 local function add_gauge(model_file)
     return api.project:add_object {
-        mesh = api.load_stl(model_file)
+        mesh = api.load_stl(model_file),
+        -- The calculator writes shrinkage compensation to material slot 1.
+        -- Keep the generated standard on the same physical extruder instead
+        -- of inheriting multi-material routing from the active print profile.
+        object_params = {
+            extruder = 1
+        }
     }
 end
 
@@ -47,6 +53,8 @@ function execute(opts)
     end
 
     add_gauge(model_file)
+    print("EXPERIMENTAL gauge: physical validation has not been completed")
+    print("Gauge assigned to extruder 1 / material slot 1; use a single-material print")
 
     if opts.generate_xy then
         print("Dimensional accuracy XY-A grid gauge generated")

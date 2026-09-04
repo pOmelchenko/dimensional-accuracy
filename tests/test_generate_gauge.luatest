@@ -1,0 +1,152 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+
+local real_print = print
+local failures = 0
+local executed = 0
+local tests = {}
+
+local function fail(message)
+    error(message, 2)
+end
+
+local function assert_true(value, message)
+    if not value then
+        fail(message or "expected a true value")
+    end
+end
+
+local function assert_equal(actual, expected, message)
+    if actual ~= expected then
+        fail(string.format(
+            "%s: expected %s, got %s",
+            message or "values differ",
+            tostring(expected),
+            tostring(actual)
+        ))
+    end
+end
+
+local function assert_contains(text, fragment, message)
+    if not tostring(text):find(fragment, 1, true) then
+        fail(string.format(
+            "%s: expected '%s' in '%s'",
+            message or "text differs",
+            fragment,
+            tostring(text)
+        ))
+    end
+end
+
+local function test(name, callback)
+    tests[#tests + 1] = {name = name, callback = callback}
+end
+
+dofile("generate_gauge.lua")
+
+local function install_api()
+    local loaded = {}
+    local added = {}
+
+    api = {
+        load_stl = function(filename)
+            local mesh = {filename = filename}
+            loaded[#loaded + 1] = mesh
+            return mesh
+        end,
+        project = {
+            add_object = function(_, definition)
+                added[#added + 1] = definition
+                return {object_index = #added}
+            end
+        }
+    }
+
+    return loaded, added
+end
+
+local function run_generator(opts)
+    local loaded, added = install_api()
+    local logs = {}
+    print = function(message)
+        logs[#logs + 1] = tostring(message)
+    end
+    local ok, result_or_error = pcall(execute, opts)
+    print = real_print
+    return ok, result_or_error, loaded, added, logs
+end
+
+local function assert_route(opts, expected_filename)
+    local ok, error_message, loaded, added = run_generator(opts)
+    assert_true(ok, error_message)
+    assert_equal(#loaded, 1, "STL load count")
+    assert_equal(loaded[1].filename, expected_filename, "selected STL")
+    assert_equal(#added, 1, "added object count")
+    assert_equal(added[1].mesh, loaded[1], "added mesh")
+    assert_true(type(added[1].object_params) == "table", "object params")
+    assert_equal(added[1].object_params.extruder, 1, "object extruder")
+end
+
+test("metadata has safe gauge defaults", function()
+    assert_equal(info.id, "dev.omelchenko.dimensional-accuracy.generate", "plugin id")
+    assert_equal(info.type, "project.plugin", "plugin type")
+    assert_contains(info.title, "experimental", "experimental title")
+
+    local params = {}
+    for _, param in ipairs(info.params) do
+        params[param.name] = param
+    end
+    assert_equal(params.generate_xy.type, "bool", "XY type")
+    assert_equal(params.generate_xy.default, true, "XY default")
+    assert_equal(params.generate_z.type, "bool", "Z type")
+    assert_equal(params.generate_z.default, false, "Z default")
+end)
+
+test("XY selection loads the XY runtime model once", function()
+    assert_route(
+        {generate_xy = true, generate_z = false},
+        "dimensional_accuracy_gauge.stl"
+    )
+end)
+
+test("Z selection loads the Z runtime model once", function()
+    assert_route(
+        {generate_xy = false, generate_z = true},
+        "dimensional_accuracy_z_gauge.stl"
+    )
+end)
+
+test("combined selection loads the XYZ runtime model once", function()
+    assert_route(
+        {generate_xy = true, generate_z = true},
+        "dimensional_accuracy_xyz_gauge.stl"
+    )
+end)
+
+test("empty selection errors without loading or adding an object", function()
+    local ok, error_message, loaded, added = run_generator({
+        generate_xy = false,
+        generate_z = false
+    })
+    assert_equal(ok, false, "empty selection result")
+    assert_contains(error_message, "Select at least one calibration gauge", "empty selection error")
+    assert_equal(#loaded, 0, "loads after empty selection")
+    assert_equal(#added, 0, "objects after empty selection")
+end)
+
+for _, item in ipairs(tests) do
+    executed = executed + 1
+    local ok, error_message = pcall(item.callback)
+    if ok then
+        real_print("ok " .. executed .. " - " .. item.name)
+    else
+        failures = failures + 1
+        real_print("not ok " .. executed .. " - " .. item.name)
+        real_print("  " .. tostring(error_message))
+    end
+end
+
+if failures > 0 then
+    error(string.format("%d of %d generator tests failed", failures, executed))
+end
+
+real_print(string.format("All %d generator tests passed", executed))
