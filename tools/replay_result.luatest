@@ -1,0 +1,12 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Trusted standalone CLI harness. It has no PrusaSlicer API and performs no writes.
+dimensional_accuracy_test = {}
+dofile(arg[1])
+local core = dimensional_accuracy_test
+local opts = dofile(arg[2])
+local requested_version = arg[3]
+if requested_version ~= core.solver_version then
+    error("Unsupported solver version: " .. tostring(requested_version))
+end
+local plan = core.calculate_plan(opts)
+print(core.json_encode(plan))

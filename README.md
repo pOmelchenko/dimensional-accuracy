@@ -33,8 +33,9 @@ fix and the material-override activation fix before this workflow is tested.
 The PrusaSlicer float-control defect is tracked in
 [prusa3d/PrusaSlicer#15611](https://github.com/prusa3d/PrusaSlicer/issues/15611).
 The plugin deliberately accepts measurements as text to avoid the swapped
-`float` and `int` controls in alpha11. Enter a positive decimal number with `.`
-or `,` as the separator; surrounding spaces are accepted. Invalid text,
+`float` and `int` controls in alpha11. Enter 3–5 positive decimal readings separated by `;`, for example
+`39,98;40,00;39,99`. Each reading accepts `.` or `,` as the decimal separator;
+surrounding spaces are accepted and preserved in the structured result. Invalid text,
 non-finite values, and non-positive measurements are rejected.
 
 The manifest's `3.0.0-alpha11` minimum names the earliest public build supported
@@ -113,9 +114,8 @@ not prove how that gauge was printed.
 
 6. Run `2. Calculate and apply`. Select `Calibrate XY`, `Calibrate Z`, or both:
 
-   - for XY, enter the six grid measurements as decimal text;
-   - for Z, enter the three measured step heights Z40, Z80, and Z120 as decimal
-     text;
+   - for XY, enter 3–5 independent re-seat readings for each of the six dimensions;
+   - for Z, enter 3–5 independent re-seat readings for each step Z40, Z80 and Z120;
    - keep every `Apply ...` checkbox cleared for a preview on alpha11.
 
 7. Review the fit, warnings, and proposed values in the process log. Only on a
@@ -143,7 +143,8 @@ groove do not intersect the working planes. XY and Z are deliberately separate
 files, so either standard can be generated and reprinted independently. The
 combined layout is one PrusaSlicer object containing both non-touching shells.
 
-The plugin writes independent X/Y scale factors, fit RMS error, anisotropy,
+The plugin preserves raw repeats, reports median/mean/range/sample SD/MAD, and
+writes independent X/Y scale factors, fit RMS error, anisotropy,
 and the optional Z scale factor to the process log. For experimental runs,
 launch PrusaSlicer from a terminal and review the complete output before
 accepting any changed setting.
@@ -151,7 +152,7 @@ accepting any changed setting.
 ## Calculation
 
 For each axis, the plugin uses ordinary least squares to fit a straight line
-to nominal lengths of 40, 80, and 120 mm. The slope represents scale error,
+to the per-span medians at nominal lengths of 40, 80, and 120 mm. The slope represents scale error,
 while the intercept represents a fixed dimensional offset. For X/Y this is
 the combined offset of the two outer contours; for Z it captures effects such
 as the first layer and layer-height rounding. The fit produces:
@@ -190,6 +191,24 @@ the gauge, printer, or corrected profile. They remain provisional until the
 recorded physical trials establish suitable thresholds. XY and Z calculations
 are independent, so either one or both can be run without validating or
 changing the unselected axis.
+
+## Saving and reproducing a calculation
+
+The calculator emits `DA_RESULT_JSON` records to the process log, including raw
+inputs, expected artifact revisions, metadata, current baseline, setting diff and
+separate apply/verification statuses. Fill the session, instrument and process
+fields to record provenance. Missing metadata is explicit. The Lua sandbox has
+no file-writing API; save the terminal log and export locally:
+
+```bash
+python3 tools/result.py export slicer-session.log --output measurement-result.json
+python3 tools/result.py replay measurement-result.json --lua /path/to/lua
+```
+
+Replay performs no host reads or writes. Successful reproduction is not physical
+verification. Single-value input remains preview-only; applying requires 3–5
+re-seats at every selected dimension. Measurement defaults are intentionally empty.
+See the [result schema and analytical note](research/results-v1.md).
 
 ## Research tooling
 

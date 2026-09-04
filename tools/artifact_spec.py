@@ -42,13 +42,13 @@ def by_id(spec):
     return {a["artifact_id"]: a for a in spec["artifacts"]}
 
 
-def projections(spec):
+def projections(spec, plugin_version):
     artifacts = by_id(spec)
     xy, z, xyz = (artifacts[key] for key in ("DA-XY-A", "DA-Z-B", "DA-XYZ-AB"))
     identity = "local GAUGE_ARTIFACTS = {\n" + "\n".join(
         f'    {family} = {{id = "{a["artifact_id"]}", revision = {a["revision"]}}},'
         for family, a in (("xy", xy), ("z", z), ("xyz", xyz))) + "\n}"
-    calculator = "local NOMINAL_LENGTHS = {" + ", ".join(str(v) for v in spec["nominal_lengths_mm"]) + "}\n" + identity
+    calculator = f'local PLUGIN_VERSION = "{plugin_version}"\n' + "local NOMINAL_LENGTHS = {" + ", ".join(str(v) for v in spec["nominal_lengths_mm"]) + "}\n" + identity
     generator = "\n".join(f'local {key}_MODEL_FILE = "{a["file"]}"' for key, a in (("XY", xy), ("Z", z), ("XYZ", xyz))) + "\n" + identity
     make = []
     names = {"DA-XY-A": "XY", "DA-Z-B": "Z", "DA-XYZ-AB": "XYZ",
@@ -83,7 +83,7 @@ def check(root=ROOT, write=False):
         match = re.search(r"^" + re.escape(key) + r"\s*=\s*([^;]+);", scad, re.M)
         if not match or json.loads(match[1]) != expected:
             raise ValueError(f"SCAD {key} differs from the artifact specification")
-    for filename, projection in projections(spec).items():
+    for filename, projection in projections(spec, json.loads((root / "manifest.json").read_text())["version"]).items():
         path = root / filename
         original = path.read_text()
         expected = marked(original, path.suffix, projection)

@@ -113,7 +113,7 @@ verify-all: verify-release verify-prototypes
 test: test-artifacts test-python test-lua test-runtime test-manifest test-makefile-safety
 
 test-python:
-	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
+	LUA="$(LUA)" $(PYTHON) -m unittest discover -s tests -p 'test_*.py'
 
 test-lua:
 	@command -v $(LUA) >/dev/null 2>&1 || { \

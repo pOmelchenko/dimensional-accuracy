@@ -80,15 +80,15 @@ local function default_opts()
     return {
         calibrate_xy = true,
         calibrate_z = false,
-        x40 = "40.00",
-        x80 = "80.00",
-        x120 = "120.00",
-        y40 = "40.00",
-        y80 = "80.00",
-        y120 = "120.00",
-        z40 = "40.00",
-        z80 = "80.00",
-        z120 = "120.00",
+        x40 = "40.00;40.00;40.00",
+        x80 = "80.00;80.00;80.00",
+        x120 = "120.00;120.00;120.00",
+        y40 = "40.00;40.00;40.00",
+        y80 = "80.00;80.00;80.00",
+        y120 = "120.00;120.00;120.00",
+        z40 = "40.00;40.00;40.00",
+        z80 = "80.00;80.00;80.00",
+        z120 = "120.00;120.00;120.00",
         apply_uniform_scale = false,
         apply_contour_offset = false,
         apply_z_shrinkage = false,
@@ -391,9 +391,9 @@ test("valid combined apply reports unverified write attempts", function()
     opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
-    opts.x40, opts.x80, opts.x120 = "40.20", "80.10", "120.00"
-    opts.y40, opts.y80, opts.y120 = "40,20", "80,10", "120,00"
-    opts.z40, opts.z80, opts.z120 = "39.92", "79.84", "119.76"
+    opts.x40, opts.x80, opts.x120 = "40.20;40.20;40.20", "80.10;80.10;80.10", "120.00;120.00;120.00"
+    opts.y40, opts.y80, opts.y120 = "40,20;40,20;40,20", "80,10;80,10;80,10", "120,00;120,00;120,00"
+    opts.z40, opts.z80, opts.z120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
     local ok, error_message, calls, logs = run_execute(opts)
     assert_true(ok, error_message)
     assert_equal(#calls, 3, "combined write count")
@@ -417,8 +417,8 @@ test("nil-returning silent no-op is never reported as applied", function()
     opts.apply_uniform_scale = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
-    opts.x40, opts.x80, opts.x120 = "39.92", "79.84", "119.76"
-    opts.y40, opts.y80, opts.y120 = "39.92", "79.84", "119.76"
+    opts.x40, opts.x80, opts.x120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
+    opts.y40, opts.y80, opts.y120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
 
     local ok, error_message, calls, logs, _, current = run_execute(
         opts,
@@ -480,6 +480,58 @@ test("rollback exception is reported without claiming rollback state", function(
     assert_equal(#calls, 4, "failed rollback attempt count")
     assert_equal(calls[4].name, "filament_shrinkage_compensation_xy")
     assert_near(calls[4].value, 0.0, 1e-12, "earlier rollback call value")
+end)
+
+test("repeats retain raw input and calculate descriptive statistics", function()
+    local r = core.parse_repeated_measurement("X40", " 39,98 ;40.02;40.00 ")
+    assert_equal(r.raw_input, " 39,98 ;40.02;40.00 ")
+    assert_equal(r.raw_tokens[1], " 39,98 ")
+    assert_equal(r.n, 3)
+    assert_near(r.median_mm, 40, 1e-12)
+    assert_near(r.mean_mm, 40, 1e-12)
+    assert_near(r.range_mm, .04, 1e-12)
+    assert_near(r.sample_sd_mm, .02, 1e-12)
+    assert_near(r.mad_mm, .02, 1e-12)
+end)
+
+test("empty repeats and invalid counts are not silently removed", function()
+    for _, text in ipairs({"40;40;", "40;;40", "40;40", "40;40;40;40;40;40", "40;nan;40"}) do
+        local ok = pcall(core.parse_repeated_measurement, "X40", text)
+        assert_equal(ok, false, text)
+    end
+end)
+
+test("single reading remains preview-only with recorded warning", function()
+    local opts = default_opts()
+    opts.x40 = "40.00"
+    local ok, record, calls = run_execute(opts)
+    assert_true(ok)
+    assert_equal(record.workflow_state, "ESTIMATED")
+    assert_equal(record.plan.xy.x.measurements[1].n, 1)
+    assert_equal(record.severity, "WARN")
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    ok, record, calls = run_execute(opts)
+    assert_equal(ok, false)
+    assert_equal(#calls, 0)
+    assert_contains(record, "3-5 full re-seat")
+end)
+
+test("structured result preserves provenance and keeps verification separate", function()
+    local opts = default_opts()
+    opts.session_id = 'sample \"A\"\nстрока'
+    opts.resolution_mm = "0,01"
+    opts.mpe_mm = "0.02"
+    local ok, record, calls, logs = run_execute(opts)
+    assert_true(ok)
+    assert_equal(record.inputs.session_id, opts.session_id)
+    assert_near(record.metadata.resolution_mm, .01, 1e-12)
+    assert_equal(record.artifacts.xy.id, "DA-XY-A")
+    assert_equal(record.verification_status, "NOT_VERIFIED")
+    assert_equal(record.apply_status, "NOT_REQUESTED")
+    assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
+    assert_equal(#calls, 0)
 end)
 
 for _, item in ipairs(tests) do

@@ -3,7 +3,7 @@
     "name": "Dimensional accuracy calibration (experimental)",
     "license": "AGPL-3.0-only",
     "min_slicer_version": "3.0.0-alpha11",
-    "version": "0.4.2",
+    "version": "0.5.0",
     "author": "pOmelchenko",
     "description": "EXPERIMENTAL: generate slot-1 XY/Z/XYZ gauges and preview compensation; automatic apply requires a validated host and physical trials.",
     "category": "calibration",

@@ -25,7 +25,7 @@ class ArtifactTests(unittest.TestCase):
         root = Path(directory)
         (root / "model").mkdir()
         for name in ("model/artifacts.json", "model/dimensional_accuracy_gauge.scad",
-                     "calculate_compensation.lua", "generate_gauge.lua", "Makefile"):
+                     "calculate_compensation.lua", "generate_gauge.lua", "Makefile", "manifest.json"):
             shutil.copyfile(spec.ROOT / name, root / name)
         return root
 

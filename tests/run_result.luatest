@@ -1,0 +1,24 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Synthetic host for CLI serialization tests only; never part of the plugin bundle.
+dofile(arg[1])
+local overrides = dofile(arg[2])
+local opts = {}
+for _, param in ipairs(info.params) do opts[param.name] = param.default end
+for key, value in pairs(overrides) do opts[key] = value end
+local values = {
+    filament_shrinkage_compensation_xy = 0,
+    filament_shrinkage_compensation_z = 0,
+    xy_size_compensation = 0
+}
+local settings = {
+    value = function(_, key) return values[key] end,
+    set = function(_, key, value) values[key] = value end
+}
+api = {project = {current_bed = function()
+    return {
+        material_presets = function() return settings end,
+        print_presets = function() return settings end
+    }
+end}}
+local ok, message = pcall(execute, opts)
+if not ok then io.stderr:write(tostring(message) .. "\n"); os.exit(1) end

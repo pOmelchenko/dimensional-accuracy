@@ -51,3 +51,18 @@
 - Consequence: missing values, quantized ratios and unknown cost acceptance can
   return INCONCLUSIVE. Synthetic superiority exercises the complete support path.
 - Revisit after a recorded pilot; change formulas/margins only with new versions.
+
+## D004 — Preserve repeated inputs and make calculation replayable offline
+
+- Date: 2026-09-04. Status: ACCEPTED. Plugin 0.5.0, solver/result schema 1.0.0.
+- Decision: semicolon-separated 3–5 readings, median aggregation, full raw text,
+  descriptive statistics and structured log export with pure Lua replay.
+  Preserve single-value preview but require repeats for apply.
+- Alternatives: comma-separated readings conflict with decimal commas; direct
+  file writing is unavailable in the host sandbox; reporting only medians
+  would lose the data needed to inspect aggregation and repeatability.
+- Evidence: local Plugin_API security documentation; `results-v1.md` analytical
+  definitions; Lua tests plus JSON/CLI replay and frozen synthetic fixtures.
+- Consequence: raw observations and MPE remain separate from model uncertainty.
+  Reproduction cannot claim an applied preset or verified physical correction.
+- Revisit the aggregation rule only with a new solver version and recorded data.
