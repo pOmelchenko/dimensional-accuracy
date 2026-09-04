@@ -64,7 +64,14 @@ info = {
     }
 }
 
-local NOMINAL_LENGTHS = {40.0, 80.0, 120.0}
+-- BEGIN GENERATED ARTIFACT SPEC
+local NOMINAL_LENGTHS = {40, 80, 120}
+local GAUGE_ARTIFACTS = {
+    xy = {id = "DA-XY-A", revision = 1},
+    z = {id = "DA-Z-B", revision = 1},
+    xyz = {id = "DA-XYZ-AB", revision = 1},
+}
+-- END GENERATED ARTIFACT SPEC
 local MIN_SHRINKAGE_PERCENT = -10.0
 local MAX_SHRINKAGE_PERCENT = 10.0
 

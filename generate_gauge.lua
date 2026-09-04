@@ -22,9 +22,16 @@ info = {
     }
 }
 
+-- BEGIN GENERATED ARTIFACT SPEC
 local XY_MODEL_FILE = "dimensional_accuracy_gauge.stl"
 local Z_MODEL_FILE = "dimensional_accuracy_z_gauge.stl"
 local XYZ_MODEL_FILE = "dimensional_accuracy_xyz_gauge.stl"
+local GAUGE_ARTIFACTS = {
+    xy = {id = "DA-XY-A", revision = 1},
+    z = {id = "DA-Z-B", revision = 1},
+    xyz = {id = "DA-XYZ-AB", revision = 1},
+}
+-- END GENERATED ARTIFACT SPEC
 
 local function add_gauge(model_file)
     return api.project:add_object {
@@ -57,12 +64,14 @@ function execute(opts)
     print("Gauge assigned to extruder 1 / material slot 1; use a single-material print")
 
     if opts.generate_xy then
+        print(string.format("Artifact %s revision %d (external identity label required)", GAUGE_ARTIFACTS.xy.id, GAUGE_ARTIFACTS.xy.revision))
         print("Dimensional accuracy XY-A grid gauge generated")
         print("Horizontal bars from bottom to top: X40, X80, X120")
         print("Vertical bars from left to right: Y40, Y80, Y120")
         print("Measure between the flat end faces near the middle of the height")
     end
     if opts.generate_z then
+        print(string.format("Artifact %s revision %d (external identity label required)", GAUGE_ARTIFACTS.z.id, GAUGE_ARTIFACTS.z.revision))
         print("Dimensional accuracy Z-B stepped plate generated")
         print("Z steps from left to right: Z40, Z80, Z120")
         print("Measure from the common base datum to each upper step")

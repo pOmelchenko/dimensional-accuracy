@@ -18,3 +18,20 @@
   failed installations remain visible. No physical PASS is claimed.
 - Revisit after the first pilot; any changed margin/design gets a new version
   and trial ID, preserving this execution's analysis.
+
+## D002 — Catalog the existing geometry without silently revising it
+
+- Date: 2026-09-04. Status: ACCEPTED. Artifact schema 1.0.0; all five
+  existing meshes receive geometry revision 1.
+- Decision: use `model/artifacts.json` for build/verifier expectations, checked
+  Lua projections and trial features. Retain the exact existing geometry.
+  Physical print labels and the frozen mesh-hash mapping provide identity on
+  these legacy unengraved parts; do not invent an engraved revision.
+- Alternatives: new runtime JSON parsing, or a new engraving on every mesh.
+  Checked projections preserve the seven-file payload, and external labels
+  avoid changing the physical control during a repeatability study.
+- Evidence: the existing SCAD, verifier expectations, and plugin discovery
+  contract (every `.lua` file is a runtime entry point).
+- Consequence: a shape change must receive a new artifact revision; external
+  physical labels remain a required step for these existing revision-1 meshes.
+- Revisit when an independently validated replacement geometry is introduced.

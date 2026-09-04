@@ -12,10 +12,12 @@ import random
 import re
 from pathlib import Path
 
+from artifact_spec import load_spec
+
 ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL = json.loads((ROOT / "research/protocol-v1.json").read_text())
 FROZEN_FILES = ("protocol.md", "protocol.json", "environment.json", "artifacts.csv",
-                "prints.csv", "instruments.csv", "schedule.csv")
+                "prints.csv", "instruments.csv", "schedule.csv", "artifact-spec.json")
 ARTIFACT_COLUMNS = ["artifact_id", "artifact_revision", "role", "family", "stl_file", "stl_sha256"]
 PRINT_COLUMNS = ["print_id", "print_batch_id", "blind_model_id", "artifact_id",
                  "gcode_sha256", "project_sha256", "bed_x_mm", "bed_y_mm",
@@ -57,20 +59,18 @@ def finite(value, label, positive=False):
     return result
 
 
-def artifacts_for(families):
-    definitions = {
-        "xy": [("DA-XY-A", "control", "dimensional_accuracy_gauge.stl"),
-               ("DA-XY-T", "challenger", "prototypes/dimensional_accuracy_xy_7x5.stl")],
-        "z": [("DA-Z-B", "control", "dimensional_accuracy_z_gauge.stl"),
-              ("DA-Z-C40", "challenger", "prototypes/dimensional_accuracy_zc40.stl")],
-    }
-    return [dict(artifact_id=aid, artifact_revision=1, role=role, family=family,
-                 stl_file=filename, stl_sha256="")
-            for family in families for aid, role, filename in definitions[family]]
+def artifacts_for(families, spec=None):
+    spec = load_spec() if spec is None else spec
+    return [dict(artifact_id=a["artifact_id"], artifact_revision=a["revision"],
+                 role=a["role"], family=a["family"], stl_file=a["file"], stl_sha256="")
+            for family in families for a in spec["artifacts"]
+            if a["family"] == family and a["role"] in ("control", "challenger")]
 
 
-def make_schedule(config, artifacts):
+
+def make_schedule(config, artifacts, spec=None):
     """One shuffled model/feature round per reseat; crossed, cyclic instrument order."""
+    spec = load_spec() if spec is None else spec
     rng = random.Random(config["seed"])
     rows, prints = [], []
     block_counter = 0
@@ -87,8 +87,10 @@ def make_schedule(config, artifacts):
                 specimens.append((model, specimen))
                 prints.append(dict(specimen, gcode_sha256="", project_sha256="",
                                    bed_x_mm="", bed_y_mm="", print_time_min="", material_g=""))
-        features = [(axis, n) for axis in ("xy" if family == "xy" else "z")
-                    for n in ([40, 80, 120] if family == "xy" else [40])]
+        definitions = {a["artifact_id"]: a for a in spec["artifacts"]}
+        control_features = definitions[models[0]["artifact_id"]]["measurements"]
+        matched = {f["id"] for f in definitions[models[1]["artifact_id"]]["measurements"]}
+        features = [(f["axis"], f["nominal_mm"]) for f in control_features if f["id"] in matched]
         instruments = list(range(1, config["calipers"] + 1))
         rng.shuffle(instruments)
         operators = list(range(1, config["operators"] + 1))
@@ -135,6 +137,7 @@ def initialize(directory, trial_id, seed, families=("xy", "z"), calipers=3):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     write_json(directory / "protocol.json", config)
+    write_json(directory / "artifact-spec.json", load_spec())
     (directory / "protocol.md").write_text(
         f"# Trial {trial_id}\n\n" + (ROOT / "research/protocol-v1.md").read_text())
     write_json(directory / "environment.json", {
@@ -171,14 +174,15 @@ def validate_plan(directory, ready=False):
     if config["study_kind"] != ("confirmatory" if config["calipers"] == 3 else "pilot"):
         raise ValueError("two-caliper studies must be pilots")
     artifacts = read_csv(directory / "artifacts.csv")
-    expected_artifacts = artifacts_for(config["families"])
+    spec = json.loads((directory / "artifact-spec.json").read_text())
+    expected_artifacts = artifacts_for(config["families"], spec)
     if len(artifacts) != len(expected_artifacts):
         raise ValueError("artifact count mismatch")
     for actual, expected in zip(artifacts, expected_artifacts):
         for key in ARTIFACT_COLUMNS[:-1]:
             if actual[key] != str(expected[key]):
                 raise ValueError(f"artifact mismatch: {key}")
-    schedule, expected_prints = make_schedule(config, artifacts)
+    schedule, expected_prints = make_schedule(config, artifacts, spec)
     actual_schedule = read_csv(directory / "schedule.csv")
     if actual_schedule != [{k: str(v) for k, v in row.items()} for row in schedule]:
         raise ValueError("schedule does not match the frozen seed/design")
