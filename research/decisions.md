@@ -35,3 +35,19 @@
 - Consequence: a shape change must receive a new artifact revision; external
   physical labels remain a required step for these existing revision-1 meshes.
 - Revisit when an independently validated replacement geometry is introduced.
+
+## D003 — Make incomplete and failed trials reproducibly analyzable
+
+- Date: 2026-09-04. Status: ACCEPTED. Analysis version 1.0.0, protocol 1.0.0.
+- Decision: implement the preregistered Gate A/B statistics without dropping raw
+  rows, with separate strict and comparative outcomes and a permanent
+  NOT_VERIFIED calibration status. Freeze artifact definitions with each trial
+  so future catalog edits do not reinterpret its features.
+- Alternatives: pooled summaries alone, automatic outlier removal, or manually
+  transcribed spreadsheets. These would hide the scheduled denominator or make
+  exact re-analysis harder.
+- Evidence: `analysis-v1.md` derivations and synthetic tests in
+  `tests/test_analyze_trial.py`; no physical evidence is claimed.
+- Consequence: missing values, quantized ratios and unknown cost acceptance can
+  return INCONCLUSIVE. Synthetic superiority exercises the complete support path.
+- Revisit after a recorded pilot; change formulas/margins only with new versions.

@@ -50,6 +50,8 @@ def write_json(path, value):
 
 
 def finite(value, label, positive=False):
+    if isinstance(value, bool):
+        raise ValueError(f"{label}: booleans are not numeric measurements")
     try:
         result = float(value)
     except (TypeError, ValueError):
@@ -205,6 +207,8 @@ def validate_plan(directory, ready=False):
             raise ValueError("complete every environment/process field before freezing")
         if environment["operators"] != [f"O{i}" for i in range(1, config["operators"] + 1)]:
             raise ValueError("operator roster mismatch")
+        for key in ("nozzle_mm", "layer_height_mm", "line_width_mm", "minimum_cooling_h"):
+            finite(environment[key], key, positive=True)
         if environment["material_slot"] != 1 or any(
             finite(environment[key], key) != 0 for key in
             ("xy_shrinkage", "z_shrinkage", "xy_size_compensation")

@@ -50,6 +50,16 @@ numbers and preserve original transcription rows. The analyzer must count
 missing attempts in the scheduled denominator. See the protocol for stop rules,
 zero-invalid blocks, raw preservation and the exact analysis formulas.
 
+Analyze recorded data into a new output directory:
+
+```bash
+python3 tools/analyze_trial.py build/trials/example --output build/analysis/example-v1
+```
+
+This produces all metrics in JSON, a Markdown report and standalone HTML raw
+observation-order plots. See the [analysis note](../research/analysis-v1.md)
+for formulas, refusal cases and the append-only deviation/decision records.
+
 Commit actual results under `prototypes/results/<trial-id>/` only after running
 the trial. Include the frozen execution copy, raw observations, derived report,
 photos and deviations. Do not add generated drafts or synthetic test data there.

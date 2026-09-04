@@ -60,6 +60,7 @@ class TrialTests(unittest.TestCase):
         for key, value in env.items():
             if value == "":
                 env[key] = "a" * 64 if key.endswith("sha256") else "synthetic"
+        env.update(nozzle_mm=0.4, layer_height_mm=0.2, line_width_mm=0.45, minimum_cooling_h=1)
         envpath.write_text(json.dumps(env))
         for name in ("artifacts.csv", "prints.csv", "instruments.csv"):
             path = self.path / name
