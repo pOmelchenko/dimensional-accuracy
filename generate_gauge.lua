@@ -9,9 +9,10 @@ info = {
     params = {
         {
             name = "generate_xy",
-            label = "Generate XY gauge",
+            label = "Generate XY-S stepped cross",
             type = "bool",
-            default = true
+            default = true,
+            tooltip = "XY-S revision 1: 145 x 145 x 4.5 mm stepped cross, 10 x 45 mm windows. Print with XY shrinkage and XY size compensation at zero."
         },
         {
             name = "generate_z",
@@ -27,9 +28,9 @@ local XY_MODEL_FILE = "dimensional_accuracy_gauge.stl"
 local Z_MODEL_FILE = "dimensional_accuracy_z_gauge.stl"
 local XYZ_MODEL_FILE = "dimensional_accuracy_xyz_gauge.stl"
 local GAUGE_ARTIFACTS = {
-    xy = {id = "DA-XY-A", revision = 1},
+    xy = {id = "DA-XY-S", revision = 1},
     z = {id = "DA-Z-B", revision = 1},
-    xyz = {id = "DA-XYZ-AB", revision = 1},
+    xyz = {id = "DA-XYZ-SB", revision = 1},
 }
 -- END GENERATED ARTIFACT SPEC
 
@@ -65,10 +66,10 @@ function execute(opts)
 
     if opts.generate_xy then
         print(string.format("Artifact %s revision %d (external identity label required)", GAUGE_ARTIFACTS.xy.id, GAUGE_ARTIFACTS.xy.revision))
-        print("Dimensional accuracy XY-A grid gauge generated")
-        print("Horizontal bars from bottom to top: X40, X80, X120")
-        print("Vertical bars from left to right: Y40, Y80, Y120")
-        print("Measure between the flat end faces near the middle of the height")
+        print("Dimensional accuracy XY-S stepped cross generated (145 x 145 x 4.5 mm)")
+        print("Long X arm points right; long Y arm points down. Windows: 10 x 45 mm.")
+        print("Primary readings per axis: outside 145 mm, short depth 30 mm, long depth 100 mm.")
+        print("Measure flat faces at mid-height, away from chamfers and corner reliefs. Extra widths, steps, windows and walls are optional checks.")
     end
     if opts.generate_z then
         print(string.format("Artifact %s revision %d (external identity label required)", GAUGE_ARTIFACTS.z.id, GAUGE_ARTIFACTS.z.revision))

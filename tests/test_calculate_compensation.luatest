@@ -80,6 +80,12 @@ local function default_opts()
     return {
         calibrate_xy = true,
         calibrate_z = false,
+        x_overall145 = "145.00;145.00;145.00",
+        x_short30 = "30.00;30.00;30.00",
+        x_long100 = "100.00;100.00;100.00",
+        y_overall145 = "145.00;145.00;145.00",
+        y_short30 = "30.00;30.00;30.00",
+        y_long100 = "100.00;100.00;100.00",
         x40 = "40.00;40.00;40.00",
         x80 = "80.00;80.00;80.00",
         x120 = "120.00;120.00;120.00",
@@ -95,6 +101,18 @@ local function default_opts()
         confirm_zero_compensation = false,
         confirm_apply_capable_host = false
     }
+end
+
+local function set_xy(opts, slope, additive, axis)
+    for _, key in ipairs(axis and {axis} or {"x", "y"}) do
+        for _, feature in ipairs(core.xy_features) do
+            if feature.axis == key and feature.required then
+                local value = slope * feature.nominal_mm + feature.contour_coefficient * (additive or 0) / 2
+                local text = string.format("%.9f", value)
+                opts[feature.id] = text .. ";" .. text .. ";" .. text
+            end
+        end
+    end
 end
 
 local function setting_stub(values, calls, kind, failures, silent_noops)
@@ -120,7 +138,7 @@ local function setting_stub(values, calls, kind, failures, silent_noops)
     }
 end
 
-local function install_api(current, failures, silent_noops)
+local function install_api(current, failures, silent_noops, readback)
     local calls = {}
     local reads = 0
     failures = failures or {}
@@ -150,6 +168,15 @@ local function install_api(current, failures, silent_noops)
         material_presets = function(_, index)
             assert_equal(index, 0, "material slot")
             reads = reads + 1
+            if readback and #calls > 0 then
+                if readback.access_error then error("injected readback access failure") end
+                return {value = function(_, name)
+                    local value = readback[name]
+                    if type(value) == "function" then return value() end
+                    if value ~= nil then return value end
+                    return material:value(name)
+                end}
+            end
             return material
         end,
         print_presets = function()
@@ -178,24 +205,46 @@ local function install_api(current, failures, silent_noops)
         end
 end
 
-local function run_execute(opts, current, failures, silent_noops)
+local function run_execute(opts, current, failures, silent_noops, readback)
     local calls, read_count, current_values = install_api(current or {
         xy_shrinkage = 0.0,
         xy_size = 0.0,
         z_shrinkage = 0.0
-    }, failures, silent_noops)
+    }, failures, silent_noops, readback)
+    local dialogs = {}
+    api.show_result = function(summary, details)
+        dialogs[#dialogs + 1] = {summary = summary, details = details}
+    end
     local logs = {}
     print = function(message)
         logs[#logs + 1] = tostring(message)
     end
     local ok, error_message = pcall(execute, opts)
     print = real_print
-    return ok, error_message, calls, logs, read_count(), current_values()
+    return ok, error_message, calls, logs, read_count(), current_values(), dialogs
 end
 
 local function joined_logs(logs)
     return table.concat(logs, "\n")
 end
+
+test("measurement tooltip examples are accepted by the actual repeated-reading parser", function()
+    local count = 0
+    local nominals = {z40=40, z80=80, z120=120}
+    for _, feature in ipairs(core.xy_features) do nominals[feature.id] = feature.nominal_mm end
+    for _, param in ipairs(info.params) do
+        if nominals[param.name] then
+            local example = param.tooltip:match("Example: ([^\n]+)")
+            assert_true(example ~= nil, "missing measurement example for " .. param.name)
+            local parsed = core.parse_repeated_measurement(param.name, example)
+            local nominal = nominals[param.name]
+            assert_equal(parsed.n, 3)
+            assert_near(parsed.median_mm, nominal - 0.01, 1e-9)
+            count = count + 1
+        end
+    end
+    assert_equal(count, 35)
+end)
 
 test("metadata uses safe controls and defaults", function()
     assert_contains(info.title, "experimental", "experimental title")
@@ -204,7 +253,7 @@ test("metadata uses safe controls and defaults", function()
         params[param.name] = param
     end
     for _, name in ipairs({
-        "x40", "x80", "x120", "y40", "y80", "y120",
+        "x_overall145", "x_short30", "x_long100", "y_overall145", "y_short30", "y_long100",
         "z40", "z80", "z120"
     }) do
         assert_equal(params[name].type, "string", name .. " control type")
@@ -279,8 +328,8 @@ end)
 
 test("anisotropy gate rejects a common XY scale", function()
     local opts = default_opts()
-    opts.x40, opts.x80, opts.x120 = "39.96", "79.92", "119.88"
-    opts.y40, opts.y80, opts.y120 = "40.04", "80.08", "120.12"
+    set_xy(opts, .999, 0, "x")
+    set_xy(opts, 1.001, 0, "y")
     assert_error_contains("anisotropy", function()
         core.calculate_plan(opts)
     end)
@@ -307,6 +356,8 @@ test("preview never writes and warns about a nonzero baseline", function()
         z_shrinkage = 0.0
     })
     assert_true(ok, error_message)
+    assert_equal(error_message.readback_status, "NOT_PERFORMED")
+    assert_equal(error_message.readback, nil)
     assert_equal(#calls, 0, "preview writes")
     assert_contains(joined_logs(logs), "WARNING: Preview assumes", "preview warning")
     assert_contains(joined_logs(logs), "Preview only: no settings were changed", "preview result")
@@ -381,30 +432,35 @@ test("invalid Z prevents otherwise valid XY writes", function()
     assert_equal(reads, 0, "preset reads before calculation validation")
 end)
 
-test("valid combined apply reports unverified write attempts", function()
+test("valid combined apply confirms fresh numeric readback separately from physical verification", function()
     local opts = default_opts()
     opts.calibrate_z = true
     opts.apply_uniform_scale = true
     opts.apply_z_shrinkage = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
-    opts.x40, opts.x80, opts.x120 = "40.20;40.20;40.20", "80.10;80.10;80.10", "120.00;120.00;120.00"
-    opts.y40, opts.y80, opts.y120 = "40,20;40,20;40,20", "80,10;80,10;80,10", "120,00;120,00;120,00"
+    set_xy(opts, .9975, .3)
+    for _, feature in ipairs(core.xy_features) do
+        if feature.axis == "y" and feature.required then opts[feature.id] = opts[feature.id]:gsub("%.", ",") end
+    end
     opts.z40, opts.z80, opts.z120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
-    local ok, error_message, calls, logs = run_execute(opts)
-    assert_true(ok, error_message)
+    local ok, record, calls, logs, reads, _, dialogs = run_execute(opts)
+    assert_true(ok, record)
     assert_equal(#calls, 2, "combined write count")
     assert_equal(calls[1].name, "filament_shrinkage_compensation_xy")
     assert_near(calls[1].value, 0.25, 1e-10, "XY shrinkage")
     assert_equal(calls[2].name, "filament_shrinkage_compensation_z")
     assert_near(calls[2].value, 0.2, 1e-10, "Z shrinkage")
     assert_contains(joined_logs(logs), "Attempted active-setting write", "attempt log")
-    assert_contains(
-        joined_logs(logs),
-        "does not confirm persistence or slicing-state updates",
-        "unverified status"
-    )
-    assert_not_contains(joined_logs(logs), "Applied ", "false apply claim")
+    assert_equal(reads, 5, "baseline and fresh material access")
+    assert_equal(record.apply_status, "CONFIRMED")
+    assert_equal(record.readback_status, "MATCHED")
+    assert_equal(record.verification_status, "NOT_VERIFIED")
+    assert_equal(#record.readback.settings, 2)
+    assert_near(record.readback.settings[1].actual_percent, .25, 1e-10)
+    assert_near(record.readback.settings[2].actual_percent, .2, 1e-10)
+    assert_contains(dialogs[1].summary, "Written and checked")
+    assert_contains(dialogs[1].summary, "Change from before: +0.250000 percentage points")
 end)
 
 test("nil-returning silent no-op is never reported as applied", function()
@@ -412,8 +468,7 @@ test("nil-returning silent no-op is never reported as applied", function()
     opts.apply_uniform_scale = true
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
-    opts.x40, opts.x80, opts.x120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
-    opts.y40, opts.y80, opts.y120 = "39.92;39.92;39.92", "79.84;79.84;79.84", "119.76;119.76;119.76"
+    set_xy(opts, .998, 0)
 
     local ok, error_message, calls, logs, _, current = run_execute(
         opts,
@@ -422,13 +477,15 @@ test("nil-returning silent no-op is never reported as applied", function()
         {filament_shrinkage_compensation_xy = true}
     )
 
-    assert_true(ok, error_message)
+    assert_equal(ok, false, "silent no-op is a mismatch")
+    assert_contains(error_message, "do not match the calculation")
     assert_equal(#calls, 1, "silent write attempt count")
     assert_near(calls[1].value, 0.2, 1e-10, "attempted value")
     assert_near(current.xy_shrinkage, 0.0, 1e-12, "silent no-op state")
     assert_contains(joined_logs(logs), "host returned no status", "nil setter status")
-    assert_contains(joined_logs(logs), "Manually inspect", "manual verification")
-    assert_not_contains(joined_logs(logs), "Applied ", "silent no-op apply claim")
+    assert_contains(joined_logs(logs), '"readback_status":"MISMATCH"')
+    assert_contains(joined_logs(logs), '"apply_status":"ERROR_UNCONFIRMED"')
+    assert_not_contains(joined_logs(logs), "Written and checked", "silent no-op apply claim")
 end)
 
 test("setter failure makes an unverified best-effort rollback attempt", function()
@@ -439,13 +496,13 @@ test("setter failure makes an unverified best-effort rollback attempt", function
     opts.confirm_zero_compensation = true
     opts.confirm_apply_capable_host = true
 
-    local ok, error_message, calls = run_execute(opts, nil, {
+    local ok, error_message, calls, logs = run_execute(opts, nil, {
         filament_shrinkage_compensation_z = 1
     })
 
     assert_equal(ok, false, "setter failure result")
     assert_contains(error_message, "Best-effort rollback calls", "rollback attempt")
-    assert_contains(error_message, "cannot be confirmed", "unverified rollback")
+    assert_contains(error_message, "Check the final setting readback", "final rollback state")
     assert_contains(error_message, "may be partially changed", "partial-state warning")
     assert_not_contains(error_message, "rolled back to zero", "false rollback claim")
     assert_equal(#calls, 4, "write and rollback attempt count")
@@ -455,6 +512,9 @@ test("setter failure makes an unverified best-effort rollback attempt", function
     assert_near(calls[3].value, 0.0, 1e-12, "failed setting rollback")
     assert_equal(calls[4].name, "filament_shrinkage_compensation_xy")
     assert_near(calls[4].value, 0.0, 1e-12, "first setting rollback")
+    assert_contains(joined_logs(logs), '"readback_status":"MATCHED"')
+    assert_contains(joined_logs(logs), '"apply_status":"ERROR_UNCONFIRMED"')
+    assert_not_contains(joined_logs(logs), "Written and checked")
 end)
 
 test("rollback exception is reported without claiming rollback state", function()
@@ -471,7 +531,7 @@ test("rollback exception is reported without claiming rollback state", function(
 
     assert_equal(ok, false, "rollback failure result")
     assert_contains(error_message, "rollback calls also raised errors", "rollback failure")
-    assert_contains(error_message, "cannot be confirmed", "unverified rollback")
+    assert_contains(error_message, "Check the final setting readback", "final rollback state")
     assert_contains(error_message, "may be partially changed", "partial-state warning")
     assert_not_contains(error_message, "rolled back to zero", "false rollback claim")
     assert_equal(#calls, 4, "failed rollback attempt count")
@@ -500,7 +560,7 @@ end)
 
 test("single reading remains preview-only with recorded warning", function()
     local opts = default_opts()
-    opts.x40 = "40.00"
+    opts.x_overall145 = "145.00"
     local ok, record, calls = run_execute(opts)
     assert_true(ok)
     assert_equal(record.workflow_state, "ESTIMATED")
@@ -524,7 +584,7 @@ test("structured result preserves provenance and keeps verification separate", f
     assert_true(ok)
     assert_equal(record.inputs.session_id, opts.session_id)
     assert_near(record.metadata.resolution_mm, .01, 1e-12)
-    assert_equal(record.artifacts.xy.id, "DA-XY-A")
+    assert_equal(record.artifacts.xy.id, "DA-XY-S")
     assert_equal(record.verification_status, "NOT_VERIFIED")
     assert_equal(record.apply_status, "NOT_REQUESTED")
     assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
@@ -552,7 +612,7 @@ test("pure scale makes M0 and M1 agree without establishing a physical winner", 
             opts[axis .. nominal] = tostring(.998 * nominal)
         end
     end
-    local models = core.calculate_plan(opts).xy.x.models
+    local models = core.calculate_plan_version(opts, "2.0.0").xy.x.models
     assert_near(models.M0.slope, .998, 1e-12)
     assert_near(models.M1.slope, .998, 1e-12)
     assert_near(models.M1.observed_additive_term_mm, 0, 1e-12)
@@ -571,7 +631,7 @@ test("M1 recovers synthetic parameters and never has larger SSE than nested M0",
                 opts[axis .. nominal] = string.format("%.9f", slope * nominal + additive)
             end
         end
-        local models = core.calculate_plan(opts).xy.x.models
+        local models = core.calculate_plan_version(opts, "2.0.0").xy.x.models
         assert_near(models.M1.slope, slope, 1e-10)
         assert_near(models.M1.observed_additive_term_mm, additive, 1e-9)
         assert_near(models.M0.slope, slope + additive * 240 / 22400, 1e-10)
@@ -583,7 +643,7 @@ end)
 test("middle span affects curvature and residuals but not M1 slope", function()
     local opts = default_opts()
     opts.x80 = "80.06"
-    local models = core.calculate_plan(opts).xy.x.models
+    local models = core.calculate_plan_version(opts, "2.0.0").xy.x.models
     assert_near(models.M1.slope, 1, 1e-12)
     assert_near(models.curvature_hint_mm, .06, 1e-12)
     assert_near(models.M1.residuals_mm[2], .04, 1e-12)
@@ -617,6 +677,367 @@ test("nil host readbacks remain readable as unknown in preview JSON", function()
     assert_equal(record.proposed_settings[1].delta, nil)
     assert_equal(record.workflow_state, "ESTIMATED")
     assert_equal(record.apply_status, "NOT_REQUESTED")
+end)
+
+test("result window distinguishes a proposal and its change from a preset write", function()
+    local opts = default_opts()
+    for _, axis in ipairs({"x", "y"}) do
+        for _, nominal in ipairs({40, 80, 120}) do
+            local reading = string.format("%.3f", nominal * .995)
+            opts[axis .. nominal] = reading .. ";" .. reading .. ";" .. reading
+        end
+    end
+    set_xy(opts, .995, 0)
+    local ok, record, calls, _, _, _, dialogs = run_execute(opts)
+    assert_true(ok)
+    assert_equal(#dialogs, 1)
+    assert_equal(#calls, 0)
+    assert_contains(dialogs[1].summary, "Preview: no settings were changed")
+    assert_contains(dialogs[1].summary, "0.0000% -> 0.5000%; change +0.5000 percentage points")
+    assert_contains(dialogs[1].details, "scale from 30/100 mm depth intervals")
+    assert_not_contains(dialogs[1].summary, "Z shrinkage")
+
+    opts.apply_uniform_scale = true
+    opts.confirm_apply_capable_host = true
+    opts.confirm_zero_compensation = true
+    ok, record, calls, _, _, _, dialogs = run_execute(opts, nil, nil,
+        {filament_shrinkage_compensation_xy = true})
+    assert_equal(ok, false)
+    assert_equal(#calls, 1)
+    assert_contains(dialogs[1].summary, "MISMATCH")
+    assert_contains(dialogs[1].summary, "current 0.000000%; expected 0.500000%")
+end)
+
+test("result window keeps unknown baseline and invalid input explicit", function()
+    local opts = default_opts()
+    local ok, _, calls, _, _, _, dialogs = run_execute(opts,
+        {xy_shrinkage = {}, xy_size = 0, z_shrinkage = 0})
+    assert_true(ok)
+    assert_equal(#calls, 0)
+    assert_contains(dialogs[1].summary, "XY shrinkage: unavailable ->")
+    assert_contains(dialogs[1].summary, "change unavailable")
+    opts.x_overall145 = "145;;145"
+    ok, _, calls, _, _, _, dialogs = run_execute(opts)
+    assert_equal(ok, false)
+    assert_equal(#calls, 0)
+    assert_equal(#dialogs, 1)
+    assert_contains(dialogs[1].summary, "Calculation stopped; no settings were changed")
+    assert_contains(dialogs[1].summary, "x_overall145 must be")
+    assert_not_contains(dialogs[1].summary, "calculate_compensation.lua:")
+end)
+
+test("result display failure cannot turn a completed calculation into apply failure", function()
+    install_api({xy_shrinkage = 0, xy_size = 0, z_shrinkage = 0})
+    api.show_result = function() error("injected UI failure") end
+    local logs = {}
+    print = function(message) logs[#logs + 1] = message end
+    local ok, record = pcall(execute, default_opts())
+    print = real_print
+    assert_true(ok)
+    assert_equal(record.apply_status, "NOT_REQUESTED")
+    assert_contains(joined_logs(logs), "Could not display calculation result")
+    assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
+end)
+
+local function confirmed_opts(with_z)
+    local opts = default_opts()
+    opts.apply_uniform_scale = true
+    opts.confirm_zero_compensation = true
+    opts.confirm_apply_capable_host = true
+    opts.calibrate_z = with_z or false
+    opts.apply_z_shrinkage = with_z or false
+    return opts
+end
+
+test("readback uses a fresh preset and reports every requested axis on partial mismatch", function()
+    local ok, message, calls, logs, _, _, dialogs = run_execute(confirmed_opts(true), nil, nil, nil,
+        {filament_shrinkage_compensation_xy = .25})
+    assert_equal(ok, false)
+    assert_equal(#calls, 2, "readback mismatch performs no extra writes")
+    assert_contains(message, "do not match the calculation")
+    assert_contains(joined_logs(logs), '"readback_status":"MISMATCH"')
+    assert_contains(dialogs[1].summary, "XY shrinkage: current 0.250000%; expected 0.000000% (MISMATCH)")
+    assert_contains(dialogs[1].summary, "Z shrinkage: current 0.000000%; expected 0.000000% (matches)")
+    assert_not_contains(dialogs[1].summary, "Written and checked")
+end)
+
+test("unreadable post-write values cannot be confirmed and do not hide other readbacks", function()
+    for _, value in ipairs({{}, function() return nil end, 0/0, math.huge,
+                            function() error("injected read failure") end}) do
+        local ok, record, calls, _, _, _, dialogs = run_execute(confirmed_opts(true), nil, nil, nil,
+            {filament_shrinkage_compensation_xy = value})
+        assert_true(ok, record)
+        assert_equal(#calls, 2)
+        assert_equal(record.apply_status, "UNCONFIRMED")
+        assert_equal(record.readback_status, "UNREADABLE")
+        assert_equal(record.readback.settings[1].status, "UNREADABLE")
+        assert_equal(record.readback.settings[1].actual_percent, nil)
+        assert_equal(record.readback.settings[2].status, "MATCHED")
+        assert_contains(dialogs[1].summary, "could not verify")
+        assert_contains(dialogs[1].summary, "Z shrinkage: current 0.000000%")
+    end
+end)
+
+test("losing access to the active preset leaves all writes unconfirmed", function()
+    local ok, record, calls = run_execute(confirmed_opts(true), nil, nil, nil, {access_error = true})
+    assert_true(ok, record)
+    assert_equal(#calls, 2)
+    assert_equal(record.apply_status, "UNCONFIRMED")
+    assert_equal(record.readback_status, "UNREADABLE")
+    for _, entry in ipairs(record.readback.settings) do
+        assert_equal(entry.status, "UNREADABLE")
+        assert_contains(entry.error, "readback access failure")
+    end
+end)
+
+test("readback compares full precision with an absolute percentage-point tolerance", function()
+    for _, actual in ipairs({.5e-6, -.5e-6, 2e-6}) do
+        local ok, record, _, logs = run_execute(confirmed_opts(), nil, nil, nil,
+            {filament_shrinkage_compensation_xy = actual,
+             filament_shrinkage_compensation_z = function() error("unselected Z read") end})
+        if math.abs(actual) < 1e-6 then
+            assert_true(ok, record)
+            assert_equal(record.apply_status, "CONFIRMED")
+            assert_equal(#record.readback.settings, 1)
+            assert_near(record.readback.settings[1].error_percent, actual, 1e-12)
+        else
+            assert_equal(ok, false)
+            assert_contains(joined_logs(logs), '"readback_status":"MISMATCH"')
+        end
+    end
+end)
+
+test("Z-only apply reads back only Z and accepts numeric percentage text", function()
+    local opts = confirmed_opts(true)
+    opts.calibrate_xy, opts.apply_uniform_scale = false, false
+    local ok, record, calls, _, reads = run_execute(opts, nil, nil, nil,
+        {filament_shrinkage_compensation_z = "0,000000%",
+         filament_shrinkage_compensation_xy = function() error("unselected XY read") end})
+    assert_true(ok, record)
+    assert_equal(#calls, 1)
+    assert_equal(reads, 4)
+    assert_equal(#record.readback.settings, 1)
+    assert_equal(record.readback.settings[1].key, "filament_shrinkage_compensation_z")
+    assert_equal(record.apply_status, "CONFIRMED")
+end)
+
+test("a known mismatch takes precedence when another selected readback is unreadable", function()
+    local ok, _, _, logs = run_execute(confirmed_opts(true), nil, nil, nil,
+        {filament_shrinkage_compensation_xy = {}, filament_shrinkage_compensation_z = .25})
+    assert_equal(ok, false)
+    assert_contains(joined_logs(logs), '"readback_status":"MISMATCH"')
+    assert_contains(joined_logs(logs), '"status":"UNREADABLE"')
+end)
+
+test("form context rereads the name of material slot one without writes", function()
+    local calls, slots = 0, {}
+    local name = 'Prusament PLA @ MK3S'
+    api = {project = {current_bed = function()
+        return {material_preset_info = function(_, slot)
+            slots[#slots + 1] = slot
+            return {name = name, id = "selected-preset"}
+        end}
+    end}}
+    local original_execute = execute
+    execute = function() calls = calls + 1 end
+    assert_equal(describe(), "Filament preset: Prusament PLA @ MK3S · slot 1")
+    name = 'Мой PETG "серый"'
+    assert_equal(describe(), 'Filament preset: Мой PETG "серый" · slot 1')
+    execute = original_execute
+    assert_equal(calls, 0)
+    assert_equal(#slots, 2)
+    assert_equal(slots[1], 0)
+    assert_equal(slots[2], 0)
+end)
+
+test("form context keeps missing preset names explicit on legacy or unavailable hosts", function()
+    local hosts = {
+        {},
+        {project = {current_bed = function() error("no active bed") end}},
+        {project = {current_bed = function() return {} end}},
+        {project = {current_bed = function() return {material_preset_info = function() return {name = "  "} end} end}},
+    }
+    for _, host in ipairs(hosts) do
+        api = host
+        assert_equal(describe(), "Filament preset: name unavailable · slot 1")
+    end
+end)
+
+test("preset name control characters do not create extra form lines", function()
+    api = {project = {current_bed = function()
+        return {material_preset_info = function() return {name = "PLA\nslot 2\t"} end}
+    end}}
+    assert_equal(describe(), "Filament preset: PLA slot 2  · slot 1")
+end)
+
+test("form context returns the current slot color independently of the preset name", function()
+    local color = "#1234ab"
+    api = {project = {current_bed = function()
+        return {material_preset_info = function(_, slot)
+            assert_equal(slot, 0)
+            return {name = "My PLA", color = color}
+        end}
+    end}}
+    local text, marker = describe()
+    assert_equal(text, "Filament preset: My PLA · slot 1")
+    assert_equal(marker, "#1234AB")
+    color = "#000000"
+    text, marker = describe()
+    assert_equal(text, "Filament preset: My PLA · slot 1")
+    assert_equal(marker, "#000000")
+end)
+
+test("missing or invalid context colors preserve the legacy single-text return", function()
+    for _, value in ipairs({false, 123, "", "#123", "#12345678", "#GGGGGG", "blue", "#123456\n"}) do
+        api = {project = {current_bed = function()
+            return {material_preset_info = function() return {name = "PLA", color = value} end}
+        end}}
+        assert_equal(select("#", describe()), 1)
+        assert_equal(describe(), "Filament preset: PLA · slot 1")
+    end
+    api = {project = {current_bed = function()
+        return {material_preset_info = function() return {name = "Legacy PLA"} end}
+    end}}
+    assert_equal(select("#", describe()), 1)
+    assert_equal(describe(), "Filament preset: Legacy PLA · slot 1")
+end)
+
+test("XY-S separates depth scale from outside and inside offsets", function()
+    local opts = default_opts()
+    for _, feature in ipairs(core.xy_features) do
+        local value = .995 * feature.nominal_mm + .08 * feature.contour_coefficient + .06 * feature.inner_coefficient
+        local text = string.format("%.9f", value)
+        opts[feature.id] = text .. ";" .. text .. ";" .. text
+    end
+    local ok, record, calls, _, _, _, dialogs = run_execute(opts)
+    assert_true(ok, record)
+    assert_equal(#calls, 0)
+    assert_near(record.plan.xy.shrinkage_percent, .5, 1e-10)
+    for _, axis in ipairs({"x", "y"}) do
+        local fit = record.plan.xy[axis]
+        assert_near(fit.slope, .995, 1e-10)
+        assert_near(fit.intercept, .16, 1e-10)
+        assert_near(fit.contour_compensation, -.08 / .995, 1e-10)
+        assert_near(fit.inner.observed_additive_term_mm, -.12, 1e-10)
+        assert_near(fit.inner.hypothetical_boundary_expansion_mm, .06 / .995, 1e-10)
+        assert_equal(#fit.measurements, 3)
+        assert_equal(#fit.additional_measurements, 13)
+        assert_equal(fit.chain.status, "CONSISTENT")
+        assert_near(fit.chain.closure_error_mm, 0, 1e-10)
+        for _, reading in ipairs(fit.additional_measurements) do
+            assert_near(reading.residual_mm, 0, 1e-10, reading.feature_id)
+            assert_equal(reading.status, "CONSISTENT", reading.feature_id)
+        end
+    end
+    assert_contains(dialogs[1].details, "hypothetical boundary expansion")
+    assert_contains(dialogs[1].details, "X chain:")
+    assert_contains(dialogs[1].details, "X_WALL_WIDE17_5")
+end)
+
+test("optional correlated dimensions cannot change the primary scale", function()
+    local opts = default_opts()
+    set_xy(opts, .995, .16)
+    local before = core.calculate_plan(opts)
+    opts.x_width25 = "25.05;25.05;25.05"
+    opts.x_step_middle30 = "29.90;29.90;29.90"
+    opts.x_inner10 = "9.83;9.83;9.83"
+    opts.x_wall_middle7_5 = "7.60;7.60;7.60"
+    local after = core.calculate_plan(opts)
+    assert_equal(before.xy.shrinkage_percent, after.xy.shrinkage_percent)
+    assert_equal(before.xy.x.intercept, after.xy.x.intercept)
+    assert_equal(after.xy.x.inner.consistency_status, "NOT_TESTABLE")
+end)
+
+test("optional contradictions stay reviewable but block all writes", function()
+    local opts = default_opts()
+    opts.x_width25 = "25.50;25.50;25.50"
+    local ok, record, calls, _, _, _, dialogs = run_execute(opts)
+    assert_true(ok, record)
+    assert_equal(record.plan.xy.x.additional_status, "INCONSISTENT")
+    assert_contains(dialogs[1].details, "X_WIDTH25")
+    assert_equal(#calls, 0)
+    opts.apply_uniform_scale, opts.confirm_zero_compensation, opts.confirm_apply_capable_host = true, true, true
+    local reads
+    ok, record, calls, _, reads = run_execute(opts)
+    assert_equal(ok, false)
+    assert_contains(record, "Additional XY measurements disagree")
+    assert_equal(#calls, 0)
+    assert_equal(reads, 0)
+end)
+
+test("XY-S rejects missing primary data and cannot reuse an old grid form", function()
+    local opts = default_opts()
+    opts.x_overall145 = nil
+    assert_error_contains("x_overall145", function() core.calculate_plan(opts) end)
+    opts = default_opts()
+    opts.x_short30 = "30.5;30.5;30.5"
+    assert_error_contains("depth readings disagree", function() core.calculate_plan(opts) end)
+    opts = default_opts()
+    opts.x_overall145 = "146.1;146.1;146.1"
+    assert_error_contains("outside additive term", function() core.calculate_plan(opts) end)
+end)
+
+test("optional hidden fields retain strict validation and repeat policy", function()
+    local opts = confirmed_opts()
+    opts.show_xy_windows = false
+    opts.x_inner45 = "45;;45"
+    local ok, message, calls = run_execute(opts)
+    assert_equal(ok, false)
+    assert_contains(message, "x_inner45")
+    assert_equal(#calls, 0)
+    opts.x_inner45 = "45"
+    ok, message, calls = run_execute(opts)
+    assert_equal(ok, false)
+    assert_contains(message, "3-5 full re-seat")
+    assert_equal(#calls, 0)
+    opts.calibrate_xy, opts.apply_uniform_scale = false, false
+    opts.calibrate_z, opts.apply_z_shrinkage = true, true
+    opts.x_inner45 = "invalid retained text"
+    ok, message, calls = run_execute(opts)
+    assert_true(ok, message)
+    assert_equal(#calls, 1)
+end)
+
+test("walls without windows are recorded without an invented inner offset", function()
+    local opts = default_opts()
+    opts.x_wall_wide17_5 = "17.5;17.5;17.5"
+    local ok, record = run_execute(opts)
+    assert_true(ok)
+    local fit = record.plan.xy.x
+    assert_equal(fit.inner, nil)
+    assert_equal(fit.additional_measurements[1].status, "NEEDS_WINDOW_MEASUREMENT")
+    assert_equal(fit.additional_measurements[1].predicted_mm, nil)
+end)
+
+test("disagreeing windows are not hidden by their average", function()
+    local opts = default_opts()
+    opts.x_inner10 = "9.6;9.6;9.6"
+    opts.x_inner45 = "45.2;45.2;45.2"
+    local fit = core.calculate_plan(opts).xy.x
+    assert_equal(fit.inner.consistency_status, "INCONSISTENT")
+    assert_equal(fit.additional_status, "INCONSISTENT")
+    assert_near(fit.additional_measurements[1].scale_only_error_mm, .2, 1e-10)
+    assert_near(fit.additional_measurements[2].scale_only_error_mm, -.4, 1e-10)
+end)
+
+test("XY form uses only supported visibility dependencies and catalog fields", function()
+    local params = {}
+    for _, param in ipairs(info.params) do
+        assert_equal(params[param.name], nil, "duplicate parameter")
+        params[param.name] = param
+    end
+    for _, param in ipairs(info.params) do
+        if param.visible_if then assert_equal(params[param.visible_if].type, "bool") end
+    end
+    assert_equal(params.x40, nil, "legacy grid field must not appear")
+    for _, feature in ipairs(core.xy_features) do
+        local field = params[feature.id]
+        assert_equal(field.type, "string")
+        assert_equal(field.default, "")
+        assert_equal(field.label, feature.label)
+        assert_contains(field.tooltip, feature.help)
+        assert_equal(field.visible_if, feature.required and "calibrate_xy" or "show_xy_" .. feature.group)
+    end
 end)
 
 for _, item in ipairs(tests) do

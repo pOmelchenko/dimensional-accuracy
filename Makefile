@@ -7,6 +7,7 @@ LUA ?= lua
 LUAC ?= luac
 
 override MODEL := model/dimensional_accuracy_gauge.scad
+override MODEL_SOURCES := model/dimensional_accuracy_gauge.scad model/xy_reference.scad model/legacy_gauges.scad
 override PROTOTYPE_DIR := prototypes
 override RELEASE_STLS := \
 	dimensional_accuracy_gauge.stl \
@@ -14,7 +15,9 @@ override RELEASE_STLS := \
 	dimensional_accuracy_xyz_gauge.stl
 override PROTOTYPE_STLS := \
 	$(PROTOTYPE_DIR)/dimensional_accuracy_xy_7x5.stl \
-	$(PROTOTYPE_DIR)/dimensional_accuracy_zc40.stl
+	$(PROTOTYPE_DIR)/dimensional_accuracy_zc40.stl \
+	$(PROTOTYPE_DIR)/dimensional_accuracy_xy_a_legacy.stl \
+	$(PROTOTYPE_DIR)/dimensional_accuracy_xyz_ab_legacy.stl
 override PLUGIN_FILES := \
 	LICENSE \
 	manifest.json \
@@ -47,39 +50,53 @@ gauges: release
 prototypes: $(PROTOTYPE_STLS)
 
 # BEGIN GENERATED ARTIFACT SPEC
-dimensional_accuracy_gauge.stl: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py
+prototypes/dimensional_accuracy_xy_a_legacy.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
 	$(PYTHON) tools/artifact_spec.py build DA-XY-A --output $@ --openscad "$(OPENSCAD)"
 
-define VERIFY_XY
+define VERIFY_LEGACY_XY
 	$(PYTHON) tools/artifact_spec.py verify DA-XY-A
 endef
 
-prototypes/dimensional_accuracy_xy_7x5.stl: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py
+prototypes/dimensional_accuracy_xy_7x5.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
 	$(PYTHON) tools/artifact_spec.py build DA-XY-T --output $@ --openscad "$(OPENSCAD)"
 
 define VERIFY_PROTOTYPE_XY
 	$(PYTHON) tools/artifact_spec.py verify DA-XY-T
 endef
 
-dimensional_accuracy_z_gauge.stl: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py
+dimensional_accuracy_z_gauge.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
 	$(PYTHON) tools/artifact_spec.py build DA-Z-B --output $@ --openscad "$(OPENSCAD)"
 
 define VERIFY_Z
 	$(PYTHON) tools/artifact_spec.py verify DA-Z-B
 endef
 
-prototypes/dimensional_accuracy_zc40.stl: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py
+prototypes/dimensional_accuracy_zc40.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
 	$(PYTHON) tools/artifact_spec.py build DA-Z-C40 --output $@ --openscad "$(OPENSCAD)"
 
 define VERIFY_PROTOTYPE_Z
 	$(PYTHON) tools/artifact_spec.py verify DA-Z-C40
 endef
 
-dimensional_accuracy_xyz_gauge.stl: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py
+prototypes/dimensional_accuracy_xyz_ab_legacy.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
 	$(PYTHON) tools/artifact_spec.py build DA-XYZ-AB --output $@ --openscad "$(OPENSCAD)"
 
-define VERIFY_XYZ
+define VERIFY_LEGACY_XYZ
 	$(PYTHON) tools/artifact_spec.py verify DA-XYZ-AB
+endef
+
+dimensional_accuracy_gauge.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
+	$(PYTHON) tools/artifact_spec.py build DA-XY-S --output $@ --openscad "$(OPENSCAD)"
+
+define VERIFY_XY
+	$(PYTHON) tools/artifact_spec.py verify DA-XY-S
+endef
+
+dimensional_accuracy_xyz_gauge.stl: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py
+	$(PYTHON) tools/artifact_spec.py build DA-XYZ-SB --output $@ --openscad "$(OPENSCAD)"
+
+define VERIFY_XYZ
+	$(PYTHON) tools/artifact_spec.py verify DA-XYZ-SB
 endef
 # END GENERATED ARTIFACT SPEC
 
@@ -103,10 +120,14 @@ verify-release-existing:
 verify-prototypes: prototypes
 	$(VERIFY_PROTOTYPE_XY)
 	$(VERIFY_PROTOTYPE_Z)
+	$(VERIFY_LEGACY_XY)
+	$(VERIFY_LEGACY_XYZ)
 
 verify-prototypes-existing:
 	$(VERIFY_PROTOTYPE_XY)
 	$(VERIFY_PROTOTYPE_Z)
+	$(VERIFY_LEGACY_XY)
+	$(VERIFY_LEGACY_XYZ)
 
 verify-all: verify-release verify-prototypes
 
@@ -197,7 +218,9 @@ clean-release:
 clean-prototypes:
 	rm -f -- \
 		prototypes/dimensional_accuracy_xy_7x5.stl \
-		prototypes/dimensional_accuracy_zc40.stl
+		prototypes/dimensional_accuracy_zc40.stl \
+		prototypes/dimensional_accuracy_xy_a_legacy.stl \
+		prototypes/dimensional_accuracy_xyz_ab_legacy.stl
 
 clean-stage:
 	@test "$(PLUGIN_STAGE_DIR)" = "build/dev.omelchenko.dimensional-accuracy"

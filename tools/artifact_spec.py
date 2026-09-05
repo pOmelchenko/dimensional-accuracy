@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load_spec(root=ROOT):
     spec = json.loads((root / "model/artifacts.json").read_text())
-    if spec["schema_version"] != "1.0.0":
+    if spec["schema_version"] != "2.0.0":
         raise ValueError("unsupported artifact schema")
     nominals = spec["nominal_lengths_mm"]
     if nominals != spec["scad_constants"]["nominal_lengths"]:
@@ -39,14 +39,38 @@ def load_spec(root=ROOT):
         if len({f["id"] for f in features}) != len(features):
             raise ValueError("duplicate measurement feature")
         for feature in features:
-            if feature["axis"] not in ("x", "y", "z") or feature["nominal_mm"] not in nominals:
+            n = feature["nominal_mm"]
+            if feature["axis"] not in ("x", "y", "z") or type(n) not in (int, float) or not math.isfinite(n) or n <= 0:
                 raise ValueError("invalid measurement feature")
-            if feature["id"] != f"{feature['axis']}{feature['nominal_mm']}":
-                raise ValueError("feature ID and nominal differ")
-        if artifact["role"] == "control":
+            if not re.fullmatch(feature["axis"] + r"[a-z0-9_]+", feature["id"]):
+                raise ValueError("feature ID and axis differ")
+            if "group" in feature:
+                if feature["group"] not in ("primary", "widths", "steps", "windows", "walls"):
+                    raise ValueError("unknown measurement group")
+                if feature["method"] not in ("outer_jaws", "inner_jaws", "depth_rod"):
+                    raise ValueError("unknown measurement method")
+                expected = {"outer_jaws": (2, 0), "inner_jaws": (0, -2), "depth_rod": (0, 0)}[feature["method"]]
+                if feature["group"] == "walls": expected = (1, 1)
+                if (feature["contour_coefficient"], feature["inner_coefficient"]) != expected:
+                    raise ValueError("measurement method and contour coefficients differ")
+            elif feature["id"] != f"{feature['axis']}{n}" or n not in nominals:
+                raise ValueError("legacy feature ID and nominal differ")
+        source = Path(artifact["source"])
+        if source.is_absolute() or ".." in source.parts or source.suffix != ".scad":
+            raise ValueError("invalid SCAD source path")
+        if artifact["role"] == "control" and artifact["artifact_id"] != spec["release_artifacts"]["xy"]:
             expected = [(axis, n) for axis in artifact["family"] for n in nominals]
             if [(f["axis"], f["nominal_mm"]) for f in features] != expected:
                 raise ValueError("control features differ from the calculator nominal definitions")
+    artifacts = by_id(spec)
+    for family, aid in spec["release_artifacts"].items():
+        if family not in ("xy", "z", "xyz") or aid not in artifacts or artifacts[aid]["family"] != family:
+            raise ValueError("invalid release artifact selection")
+    xy = artifacts[spec["release_artifacts"]["xy"]]
+    for axis in "xy":
+        primary = [f for f in xy["measurements"] if f["axis"] == axis and f.get("required")]
+        if [(f["nominal_mm"], f["method"]) for f in primary] != [(145, "outer_jaws"), (30, "depth_rod"), (100, "depth_rod")]:
+            raise ValueError("XY primary features differ from accepted reference")
     return spec
 
 
@@ -56,19 +80,28 @@ def by_id(spec):
 
 def projections(spec, plugin_version):
     artifacts = by_id(spec)
-    xy, z, xyz = (artifacts[key] for key in ("DA-XY-A", "DA-Z-B", "DA-XYZ-AB"))
+    xy, z, xyz = (artifacts[spec["release_artifacts"][key]] for key in ("xy", "z", "xyz"))
     identity = "local GAUGE_ARTIFACTS = {\n" + "\n".join(
         f'    {family} = {{id = "{a["artifact_id"]}", revision = {a["revision"]}}},'
         for family, a in (("xy", xy), ("z", z), ("xyz", xyz))) + "\n}"
+    def lua(value):
+        if value is None: return "nil"
+        if isinstance(value, bool): return str(value).lower()
+        if isinstance(value, str): return json.dumps(value, ensure_ascii=False)
+        if isinstance(value, (int, float)): return str(value)
+        if isinstance(value, list): return "{" + ", ".join(lua(v) for v in value) + "}"
+        return "{" + ", ".join(f"{k} = {lua(v)}" for k, v in value.items()) + "}"
     calculator = f'local PLUGIN_VERSION = "{plugin_version}"\n' + "local NOMINAL_LENGTHS = {" + ", ".join(str(v) for v in spec["nominal_lengths_mm"]) + "}\n" + identity
+    calculator += "\nlocal XY_FEATURES = {\n" + "\n".join("    " + lua(f) + "," for f in xy["measurements"]) + "\n}"
     generator = "\n".join(f'local {key}_MODEL_FILE = "{a["file"]}"' for key, a in (("XY", xy), ("Z", z), ("XYZ", xyz))) + "\n" + identity
     make = []
-    names = {"DA-XY-A": "XY", "DA-Z-B": "Z", "DA-XYZ-AB": "XYZ",
+    names = {"DA-XY-S": "XY", "DA-Z-B": "Z", "DA-XYZ-SB": "XYZ",
+             "DA-XY-A": "LEGACY_XY", "DA-XYZ-AB": "LEGACY_XYZ",
              "DA-XY-T": "PROTOTYPE_XY", "DA-Z-C40": "PROTOTYPE_Z"}
     for artifact in spec["artifacts"]:
         aid, filename = artifact["artifact_id"], artifact["file"]
         make.extend([
-            f"{filename}: $(MODEL) Makefile model/artifacts.json tools/artifact_spec.py",
+            f"{filename}: $(MODEL_SOURCES) Makefile model/artifacts.json tools/artifact_spec.py",
             f'\t$(PYTHON) tools/artifact_spec.py build {aid} --output $@ --openscad "$(OPENSCAD)"',
             "", f"define VERIFY_{names[aid]}",
             f"\t$(PYTHON) tools/artifact_spec.py verify {aid}", "endef", ""])
@@ -90,11 +123,13 @@ def marked(text, extension, body):
 
 def check(root=ROOT, write=False):
     spec = load_spec(root)
-    scad = (root / "model/dimensional_accuracy_gauge.scad").read_text()
-    for key, expected in spec["scad_constants"].items():
-        match = re.search(r"^" + re.escape(key) + r"\s*=\s*([^;]+);", scad, re.M)
-        if not match or json.loads(match[1]) != expected:
-            raise ValueError(f"SCAD {key} differs from the artifact specification")
+    sources = {spec["scad_constants_file"]: spec["scad_constants"], **spec["source_constants"]}
+    for filename, constants in sources.items():
+        scad = (root / filename).read_text()
+        for key, expected in constants.items():
+            match = re.search(r"^\s*" + re.escape(key) + r"\s*=\s*([^;]+);", scad, re.M)
+            if not match or json.loads(match[1]) != expected:
+                raise ValueError(f"SCAD {key} differs from the artifact specification")
     for filename, projection in projections(spec, json.loads((root / "manifest.json").read_text())["version"]).items():
         path = root / filename
         original = path.read_text()
@@ -104,11 +139,10 @@ def check(root=ROOT, write=False):
         elif original != expected:
             raise ValueError(f"stale artifact projection: {filename}; run artifact_spec.py sync")
     calculator = (root / "calculate_compensation.lua").read_text()
-    for a in spec["artifacts"]:
-        if a["role"] != "control":
-            continue
+    for a in [by_id(spec)[spec["release_artifacts"]["z"]]]:
         for f in a["measurements"]:
-            pattern = r'name = "' + re.escape(f["id"]) + r'", label = "Measured ' + re.escape(f["id"].upper())
+            pattern = (r'name = "' + re.escape(f["id"]) + r'", label = "' +
+                       re.escape(f["id"].upper() + " [mm]") + '"')
             if not re.search(pattern, calculator):
                 raise ValueError(f"missing calculator feature label: {f['id']}")
     return spec
@@ -162,7 +196,7 @@ def main():
             defines = {"gauge_mode": artifact["mode"], **artifact["scad_overrides"]}
             options = [arg for key, value in defines.items() for arg in ("-D", f"{key}={json.dumps(value)}")]
             subprocess.run([*shlex.split(args.openscad), *options, "--export-format", "binstl",
-                            "-o", str(output), str(ROOT / "model/dimensional_accuracy_gauge.scad")], check=True)
+                            "-o", str(output), str(ROOT / artifact["source"])], check=True)
     except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as exc:
         parser.exit(1, f"ERROR: {exc}\n")
 

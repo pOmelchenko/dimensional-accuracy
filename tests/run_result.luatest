@@ -10,9 +10,19 @@ local values = {
     filament_shrinkage_compensation_z = 0,
     xy_size_compensation = 0
 }
+local writes = 0
+local mode = arg[3] or "normal"
 local settings = {
-    value = function(_, key) return values[key] end,
-    set = function(_, key, value) values[key] = value end
+    value = function(_, key)
+        if mode == "unreadable_xy" and writes > 0 and key == "filament_shrinkage_compensation_xy" then return {} end
+        return values[key]
+    end,
+    set = function(_, key, value)
+        writes = writes + 1
+        if mode == "noop_xy" and key == "filament_shrinkage_compensation_xy" then return end
+        if mode == "throw_z" and key == "filament_shrinkage_compensation_z" then error("synthetic setter failure") end
+        values[key] = value
+    end
 }
 api = {project = {current_bed = function()
     return {

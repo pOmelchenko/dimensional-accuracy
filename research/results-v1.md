@@ -75,3 +75,64 @@ Raw values are not rounded; formatted human log summaries do not replace them.
 Schema revisions require a compatibility note/migration. No old physical result
 format exists in this repository; standalone legacy single-input preview is
 preserved rather than silently converted into repeated data.
+
+## Schema 1.1.0 and 1.2.0 compatibility
+
+Schema 1.1.0 adds the solver-2 M0/M1 diagnostics described in
+[models-v2.md](models-v2.md). Plugin 0.7.0 emits schema 1.2.0, retaining those
+calculations and adding post-write verification. Export/replay accepts all
+three schema versions; legacy versions cannot claim confirmed host readback.
+The frozen solver-1/schema-1.0 fixture remains unchanged.
+
+After all requested writes (and any best-effort rollback on a setter exception),
+the plugin reacquires `current_bed():material_presets(0)` and reads only the
+requested XY/Z shrinkage keys. The final record adds:
+
+| Field | Meaning |
+|---|---|
+| readback.tolerance_percent | Absolute comparison tolerance, 0.000001 percentage point; a software numeric tolerance, not a physical acceptance limit |
+| readback.settings[] | One entry for each requested key; no entry for an unselected axis or diagnostic contour proposal |
+| key / expected_percent | Setting key and the calculated value requested for it |
+| actual_percent / error_percent | Finite readback and actual minus expected; absent if unreadable |
+| raw / error | Available raw readout text or the reason it could not be read |
+| status | Per-setting MATCHED, MISMATCH, or UNREADABLE |
+
+Aggregate `readback_status` is MISMATCH if any value differs, otherwise UNREADABLE
+if any read failed, otherwise MATCHED. A non-throwing write with MATCHED readback
+produces `apply_status=CONFIRMED`; unavailable reads leave UNCONFIRMED. A mismatch
+or setter exception produces ERROR_UNCONFIRMED. A setter exception remains an
+error even if the final values happen to match the proposal. Readback after
+rollback compares the remaining values with the calculation; it does not claim
+that rollback restored the initial state. A readback mismatch triggers no extra
+writes. Preview/refusal before writing retains NOT_PERFORMED and has no
+`readback` object.
+
+`workflow_state` remains APPLY_ATTEMPTED for these write outcomes. Physical
+`verification_status` remains NOT_VERIFIED even when the settings match.
+Validation checks requested-key coverage, numeric differences, tolerance and
+status consistency. Offline replay checks the saved calculation without reading
+the host; it cannot independently authenticate the recorded setting values,
+confirm persistence after restarting, or validate slicing and physical accuracy.
+
+## Schema 1.3.0 / solver 3.0.0 (plugin 0.11.0)
+
+The default XY artifact is DA-XY-S r1. Its inputs have explicit feature IDs
+(`x_overall145`, `x_short30`, `x_long100`, etc.); old `x40/x80/x120` grid inputs
+cannot substitute for them. [XY-S definitions](../model/xy-reference.md) specify
+the depth-scale estimator and separate outside/inside boundary assumptions.
+
+Each XY fit has three primary `measurements` and an `additional_measurements`
+array, which is empty when no optional fields are filled. Records retain raw
+text/tokens/values, statistics, nominal, method, group and boundary coefficients.
+Additional observations include predictions/residuals/status where identifiable;
+wall-only data uses `NEEDS_WINDOW_MEASUREMENT` without an invented prediction.
+The optional `inner` object records a diagnostic additive term, hypothetical
+boundary expansion, observation count and consistency status. One window is
+`NOT_TESTABLE`; its observation is `DESCRIPTIVE_ONLY`. The optional `chain`
+records the depth + crossing + depth sum, overall, closure error and status.
+None of the additional fields changes primary scale weights or authorizes an
+inside/contour setting write. Contradictions block application but remain
+exportable/replayable. Host readback semantics are unchanged from schema 1.2.0.
+
+Replay dispatches solvers 1.0.0, 2.0.0 and 3.0.0 separately, preserving the legacy
+plan shapes and arithmetic. Z keeps the solver-2 fit within solver 3.0.0.

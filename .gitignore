@@ -15,3 +15,7 @@ build/
 .vscode/
 *~
 .DS_Store
+
+# Rebuilt from the versioned SCAD sources; runtime/prototype meshes are not source.
+/dimensional_accuracy*.stl
+/prototypes/dimensional_accuracy*.stl

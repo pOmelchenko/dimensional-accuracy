@@ -1,12 +1,10 @@
 # Dimensional Accuracy Calibration (experimental)
 
-An experimental calibration plugin for the PrusaSlicer Lua Plugin API. It
-generates an XY measurement grid and estimates dimensional error independently
-for the X, Y, and optional Z axes:
-
-```text
-measured = scale * nominal + observed_additive_term
-```
+An experimental calibration plugin for the PrusaSlicer Lua Plugin API. The
+accepted XY reference is **DA-XY-S revision 1**: a 145 × 145 × 4.5 mm stepped
+cross with two 10 × 45 mm windows and chamfered corner reliefs. Plugin **0.11.0**
+collects its outside, depth, inside and wall measurements. The Z-B reference is
+unchanged. See the [XY-S measurement guide](model/xy-reference.md).
 
 > **Not ready for production presets.** The meshes pass automated geometry
 > checks, but no physical validation results have been recorded and there is no
@@ -15,9 +13,11 @@ measured = scale * nominal + observed_additive_term
 
 ## Compatibility and requirements
 
-- PrusaSlicer 3.0.0-alpha11 for gauge generation and calculation-only preview;
+- PrusaSlicer 3.0.0-alpha11 as the API baseline; the complete compact XY-S form
+  uses the development dialog patch described below;
 - for automatic application, a development PrusaSlicer build containing both
-  preset-setting host fixes described below;
+  preset-setting host fixes described below; numeric write verification also
+  needs the `fix/lua-percentage-readback` host patch;
 - `project.plugin` API version 1.0.0;
 - an FFF, single-material print using physical extruder/material slot 1 (SLA
   and multi-material calibration are not supported);
@@ -57,7 +57,8 @@ the release target additionally needs OpenSCAD.
 git clone --branch fix/lua-plugin-settings \
   https://github.com/pOmelchenko/dimensional-accuracy.git
 cd dimensional-accuracy
-make stage-plugin-existing
+make release
+make stage-plugin
 
 PRUSASLICER_CONFIG_DIR="/path/shown/by/Help/Show Configuration Folder"
 mkdir -p "$PRUSASLICER_CONFIG_DIR/lua"
@@ -75,6 +76,34 @@ files—no research prototypes or build tooling. A Git checkout is not a release
 artifact.
 
 ## Usage
+
+The development [calculator dialog patch](research/calculator-ui.md) adds wide,
+aligned measurement fields, a shared input example, optional Z/session fields,
+and an in-window result with current/proposed values and their difference.
+`Show details` expands fit diagnostics and warnings; `Back` preserves the form.
+Labels occupy the left column; switches align with the inputs in the right
+column, including `Show details` on the result page. Long labels wrap.
+Plugin 0.11.0 keeps a compact 580-unit dialog with 300-unit measurement fields.
+Plugin 0.8.0 with the updated dialog patch shows the selected filament preset's
+name and material slot 1 above the form and on the result page. The name is read
+again on each opening, including after changing presets. It is read-only;
+optional spool/lot provenance remains entered separately. If the host cannot
+provide a name, the context says `name unavailable`.
+Plugin 0.9.0 and the latest dialog patch also show a color marker matching the
+current slot color in PrusaSlicer's main window, including manual color changes.
+Reopening refreshes it; the marker is read-only and remains on the result page.
+An unavailable color omits the marker while preserving the name.
+Plugin 0.10.0 with the updated dialog patch adds native, wrapped tooltips on
+fields and toggles. Hover over a measurement input for re-seating instructions
+and an example, or over an Apply switch for its target and requirements.
+Optional session fields explain the recorded instrument and spool information.
+Older hosts ignore this help metadata; the shared entry instructions remain.
+On hosts without that extension, fields remain visible and results use the log.
+An unreadable current setting is shown as unavailable, including its difference;
+plugin 0.7.0 also rereads the active material settings after applying a change.
+The separate Percentage host patch makes these values readable. The result
+shows the actual and expected values, their match status, and the change from
+the initial setting. Host branch details are in the dialog note linked above.
 
 On the current public PrusaSlicer baseline, use the calculator only as a preview:
 leave all `Apply ...` checkboxes cleared and read the result in the process log.
@@ -96,7 +125,7 @@ not prove how that gauge was printed.
    measurement-model precondition, not an optional cleanup step. Preview mode
    warns when it can read a non-zero baseline; apply mode refuses all writes.
 3. Run `Plugins -> Calibration -> Dimensional accuracy -> 1. Generate gauge`.
-   Select `Generate XY gauge`, `Generate Z gauge`, or both. The checkbox
+   Select `Generate XY-S stepped cross`, `Generate Z gauge`, or both. The checkbox
    combination loads one of three prepared models: XY, Z, or a combined XY+Z
    layout whose two printable shells already have a 10 mm gap.
 4. Confirm that the object is assigned to extruder 1, print the generated
@@ -104,37 +133,44 @@ not prove how that gauge was printed.
    temperature.
 5. Take the selected measurements:
 
-   - for XY, measure between the flat end faces near the middle of the gauge
-     height, avoiding the edge chamfers and first-layer elephant foot;
-     horizontal bars from bottom to top are X40, X80, X120, and vertical bars
-     from left to right are Y40, Y80, Y120;
+   - for XY-S, use outside jaws for the overall 145 mm span and the depth rod
+     for the short 30 mm and long 100 mm intervals on each axis. The long X
+     arm points right and long Y arm down. The [guide](model/xy-reference.md)
+     identifies each contact; tooltips repeat these instructions;
    - for Z, approach the thin stepped wall from its open side and measure from
      the common bottom datum to each upper step; from left to right they are
      Z40, Z80, and Z120.
 
 6. Run `2. Calculate and apply`. Select `Calibrate XY`, `Calibrate Z`, or both:
 
-   - for XY, enter 3–5 independent re-seat readings for each of the six dimensions;
+   - for XY, enter 3–5 independent re-seat readings for the six primary fields;
+   - optionally expand XY widths/spans, steps, windows or walls. Blank fields
+     are skipped. Hiding retains readings; filled fields are checked whenever
+     XY is enabled. These checks do not change the primary scale estimate;
    - for Z, enter 3–5 independent re-seat readings for each step Z40, Z80 and Z120;
    - keep every `Apply ...` checkbox cleared for a preview on alpha11.
 
-7. Review the fit, warnings, and proposed values in the process log. Only on a
+7. Review the result and `Show details` in the patched dialog, or the process log
+   on a host without the dialog extension. Only on a
    validated apply-capable host, enable the relevant `Apply ...` controls and
    explicitly select both `I am using a validated apply-capable PrusaSlicer
    build` and `I printed the gauge with selected compensation settings at zero`.
-   Rerun the calculation. `ConfigBox:set()` provides no success status, so a
-   non-throwing setter call proves only that the write was attempted, not that
-   the active value changed. Preset readback or slicing state may also be stale.
-   PrusaSlicer provides no transactional preset update, and rollback calls after
-   an exception are best-effort and unverified. After every apply attempt,
-   manually inspect every selected value in the active print and filament
-   settings before slicing or retrying. Print multiple calibration objects again
-   to verify the result.
+   Rerun the calculation. After the write calls, the plugin obtains a fresh
+   material-settings handle and reads every requested shrinkage setting.
+   `Written and checked` / `CONFIRMED` means all values match the calculation
+   within 0.000001 percentage point and no setter raised an error. A mismatch
+   is an apply error; an unavailable read leaves the write unconfirmed. Both
+   outcomes show the individual readouts for manual inspection before retrying.
+   PrusaSlicer provides no transactional preset update: rollback after a setter
+   exception remains best-effort, and the final readout describes the values
+   left afterward. Readback confirms active settings only; print and measure
+   calibration objects again to establish whether dimensional accuracy improves.
 
-The XY-A gauge is a single 120 x 120 x 4.5 mm `#`-like body made from 6.5 mm
-bars. Its measurement ends retain flat working faces of at least 5 x 3 mm,
-while the outside top and bottom edges are chamfered. Recessed labels identify
-all six dimensions and a concave pocket provides a sheltered seam location.
+The XY-S gauge has 30 mm short arms, a 15 mm crossing and 100 mm long arms.
+Long-arm sections are 30/30/30 mm after a 10 mm root offset, with outside widths
+35/25/15 mm. Both windows are 10 × 45 mm with 7.5 mm nominal end/straight-edge
+spacing. Top/bottom chamfers and relieved corners keep the central flat contact
+region accessible. Its generated mesh matches the accepted v10 prototype.
 
 The Z-B gauge is a 52 x 24 x 120 mm stepped plate. Three adjacent 14 mm blades
 share a 6.5 mm wall thickness and a common datum. Rear gussets stiffen the wall
@@ -151,33 +187,33 @@ accepting any changed setting.
 
 ## Calculation
 
-For each axis, the plugin uses ordinary least squares to fit a straight line
-to the per-span medians at nominal lengths of 40, 80, and 120 mm. The slope represents scale error,
-while the intercept is an **observed additive term**. External dimensions alone
-do not identify its cause: contour construction, seam, jaw placement and other
-effects can produce similar values. For Z, first-layer/datum and layer-height
-effects are additional possibilities. The fit produces:
+Solver **3.0.0** uses the two XY depth medians to estimate scale through the
+origin, separately on each axis:
 
-- independent X and Y scale corrections;
-- a common `filament_shrinkage_compensation_xy` value;
-- a hypothetical `xy_size_compensation` value, explicitly diagnostic only;
-- an optional `filament_shrinkage_compensation_z` value fitted from Z40, Z80,
-  and Z120;
-- the observed additive Z term and fit RMS, reported in the process log but not applied
-  because PrusaSlicer has no corresponding Z-offset compensation setting.
+```text
+s = (30 * short_depth + 100 * long_depth) / (30² + 100²)
+b_outer = overall_145 - 145 * s
+XY shrinkage [%] = 100 * (1 - mean(s_x, s_y))
+```
 
-The calculation is not tied to this particular mesh. Any gauge that supplies
-the same three external nominal spans per axis can be used. The model assumes
-that error is the sum of a length-dependent scale term and one constant
-offset; it does not model nonlinear or feature-specific error.
+This assumes that the two same-facing surfaces of a depth interval have the
+same contour displacement. The overall outside span then supplies an observed
+additive term. The assumption is experimental and needs physical validation.
 
-Solver 2.0.0 also reports M0 (scale only) beside M1 (scale plus additive term),
-including residuals, SSE/RMS and residual degrees of freedom. It does not choose
-a physical winner from lower RMS. Existing scale proposals are explicitly
-labelled legacy M1 diagnostics; M0 values are shown alongside them. XY size
-compensation has no apply control, and stale contour-apply requests are rejected
-before any settings access. See the [model derivation and error budget](research/models-v2.md)
-and [setting semantics](research/settings-semantics.md).
+Optional widths and steps check this estimate without changing its weights.
+Window readings estimate a separate observed inside additive term; wall
+readings can check the combination of outside and inside terms. A crossing
+width also enables the short + crossing + long versus overall closure check.
+All results and raw repeats appear in the result details and JSON. Outside and
+inside boundary corrections remain diagnostic only; only filament shrinkage
+can be applied. Inconsistent additional readings remain reviewable in preview
+and block application. Related dimensions are not independent evidence of
+accuracy. See [definitions and equations](model/xy-reference.md).
+
+Z continues to use the 40/80/120 mm median OLS fit, with M0/M1 diagnostics and
+no applied additive Z correction. Solvers 1.0.0 and 2.0.0 are retained for replay
+of old grid-gauge results; their inputs cannot be reused in the XY-S form.
+The [previous model derivation](research/models-v2.md) documents that legacy fit.
 
 Before reporting a selected plan or attempting the first preset write, the
 calculator applies these provisional software sanity limits to every selected
@@ -185,10 +221,11 @@ axis:
 
 - every measurement must be positive and no more than 5.0 mm from its nominal
   value;
-- the measured 40/80/120 sequence must be strictly increasing;
-- each axis fit must have a maximum absolute point residual no greater than
-  0.25 mm, RMS no greater than 0.15 mm, and an absolute intercept no greater
-  than 1.0 mm;
+- the Z 40/80/120 sequence must be strictly increasing;
+- XY depth fits and the Z fit must have maximum absolute residual no greater
+  than 0.25 mm and RMS no greater than 0.15 mm; outside additive terms must be
+  within ±1.0 mm. Additional XY check residuals must be within ±0.25 mm for
+  application; inside additive terms must also remain within ±1.0 mm;
 - the absolute X/Y anisotropy must be no greater than 0.10 percentage point;
 - every calculated shrinkage value must remain within PrusaSlicer's supported
   -10% to +10% range.
@@ -218,7 +255,10 @@ Replay performs no host reads or writes. Successful reproduction is not physical
 verification. Single-value input remains preview-only; applying requires 3–5
 re-seats at every selected dimension. Measurement defaults are intentionally empty.
 See the [result schema and analytical note](research/results-v1.md). Schema 1.1.0
-adds the solver-2 diagnostics; saved solver-1/schema-1.0 results remain replayable.
+adds the solver-2 diagnostics; schema 1.2.0 adds setting readback and its comparison
+with the requested values. Schema 1.3.0 adds typed XY-S primary/additional
+measurements, window diagnostics and chain closure. Saved schema-1.0/1.1/1.2
+results remain replayable using their original solver version.
 
 ## Research tooling
 
@@ -232,7 +272,9 @@ milestones, validation results and remaining physical/host release evidence.
 
 ## Model source and prototypes
 
-All models are generated from `model/dimensional_accuracy_gauge.scad`. Product
+The release entry point is `model/dimensional_accuracy_gauge.scad`, using
+`model/xy_reference.scad` and `model/legacy_gauges.scad`. The latter preserves
+Z and the previous research models; the catalog selects each artifact source. Product
 and research work have deliberately separate targets. The local quality gate
 requires OpenSCAD, Python 3, and a Lua 5.4 interpreter/compiler (`LUA` and
 `LUAC` may point to non-default executable names):
@@ -243,30 +285,33 @@ make verify-prototypes  # rebuild and verify the research-only challengers
 make verify-all         # run both verification groups
 make test               # verifier, manifest, generator, and calculator tests
 make stage-plugin       # stage the exact seven-file unsigned runtime payload
-make stage-plugin-existing # dev-only: verify/stage committed STL without OpenSCAD
+make stage-plugin-existing # dev-only: verify/stage previously generated STL without OpenSCAD
 ```
 
 `make all`, `make release`, and `make gauges` build only the three runtime
 layouts. `make verify` is an alias for `make verify-release`; it already builds
 what it verifies, so do not precede it with `make all`. On a machine without
-OpenSCAD, `make verify-existing` checks the committed runtime meshes without
+OpenSCAD, `make verify-existing` checks existing generated runtime meshes without
 claiming that they are fresh. Prototype generation remains opt-in.
 
 `prototypes/dimensional_accuracy_xy_7x5.stl` tests the alternative 7 x 5 mm
 bar section. `prototypes/dimensional_accuracy_zc40.stl` is a 50 mm fragment
 with a 9 x 7 mm through-window whose lower working plane is exactly 40 mm from
-the datum. Prototype files are not loaded by the plugin and must not replace
-the bundled gauges without the physical repeatability experiment.
+the datum. Prototype files are not loaded by the plugin. The old XY-A and XYZ-AB layouts
+remain available as `prototypes/dimensional_accuracy_xy_a_legacy.stl` and
+`prototypes/dimensional_accuracy_xyz_ab_legacy.stl` for frozen legacy protocols.
+Those protocols do not automatically include XY-S.
 
 The verifier checks binary STL structure, finite non-degenerate triangles,
 manifold edges, consistent outward winding, connected components, per-component
 bounds and volume, layout gaps, and the required measurement planes on the
-intended component. CI regenerates both runtime and prototype meshes and
-compares their canonical oriented surface patches with the committed artifacts;
-coplanar retriangulation alone does not fail that comparison. These checks do
-not replace slicing or physical measurements.
+intended component. Canonical oriented surface comparison tolerates coplanar
+retriangulation. These checks do not replace slicing or physical measurements.
 
 ## Validation status
+
+The [XY-S acceptance check](research/xy-s-validation.md) records geometry gates,
+119 software tests and the Ubuntu dialog/export/replay check for plugin 0.11.0.
 
 The generated meshes satisfy the automated geometry checks. No physical result
 is claimed. Release approval still requires recorded slicing results and the
@@ -289,15 +334,15 @@ access, repeatability, and systematic offset.
 - The Lua API cannot scale an existing object independently along X and Y.
 - The plugin's write attempts target the active settings of the current project;
   it does not create a saved user preset.
-- The regression uses equal measurement weights and does not automatically
-  delete a raw observation. It fits per-span medians; all readings remain in
-  the saved raw input and descriptive statistics. If an aggregated span breaches
-  a residual, RMS or other provisional sanity limit, the selected plan is rejected.
+- XY uses only its two primary depth intervals to estimate scale; Z uses
+  unweighted OLS. Both fit per-feature medians and preserve every raw repeat.
+  Additional XY measurements diagnose disagreement without gaining extra fit
+  weight. No uncertainty or physical success is inferred from a small residual.
 - Plugin API 1.0.0 cannot arrange objects after adding them. The combined STL
   avoids overlap, but its XY and Z shells are one slicer object and cannot be
   moved or deleted independently.
-- The Lua API cannot paint the seam automatically. Place it in the XY concave
-  pocket or the Z rear groove, away from every measured face.
+- The Lua API cannot paint the seam automatically. Place it in an XY corner
+  relief or the Z rear groove, away from every measured face.
 
 ## License
 

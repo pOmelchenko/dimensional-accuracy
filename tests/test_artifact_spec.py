@@ -25,6 +25,7 @@ class ArtifactTests(unittest.TestCase):
         root = Path(directory)
         (root / "model").mkdir()
         for name in ("model/artifacts.json", "model/dimensional_accuracy_gauge.scad",
+                     "model/xy_reference.scad", "model/legacy_gauges.scad",
                      "calculate_compensation.lua", "generate_gauge.lua", "Makefile", "manifest.json"):
             shutil.copyfile(spec.ROOT / name, root / name)
         return root
@@ -39,14 +40,14 @@ class ArtifactTests(unittest.TestCase):
                 spec.check(root)
             spec.check(root, write=True)
             spec.check(root)
-            path = root / "model/dimensional_accuracy_gauge.scad"
+            path = root / "model/legacy_gauges.scad"
             path.write_text(path.read_text().replace("xy_bar_width = 6.5", "xy_bar_width = 7.5"))
             with self.assertRaisesRegex(ValueError, "SCAD xy_bar_width"):
                 spec.check(root)
 
     def test_changed_label_and_make_verifier_fail(self):
         for filename, before, after in (
-            ("calculate_compensation.lua", 'label = "Measured X40', 'label = "Measured X30'),
+            ("calculate_compensation.lua", 'label = "X overall [145 mm]"', 'label = "X overall [140 mm]"'),
             ("Makefile", "verify DA-XY-A", "verify DA-XY-T"),
         ):
             with self.subTest(filename=filename), tempfile.TemporaryDirectory() as directory:
