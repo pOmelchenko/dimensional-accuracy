@@ -30,7 +30,8 @@ preset-change notifications, so the settings UI and slicing state may remain
 stale after the calls. An apply-capable host must include both the preset-update
 fix and the material-override activation fix before this workflow is tested.
 The current combined development patches pass the recorded
-[XY-S apply and reslicing check](research/xy-s-software-validation.md).
+[XY-S apply and reslicing check](research/xy-s-software-validation.md) and
+[Z reslicing plus preset/project restart checks](research/z-persistence-validation.md).
 
 The PrusaSlicer float-control defect is tracked in
 [prusa3d/PrusaSlicer#15611](https://github.com/prusa3d/PrusaSlicer/issues/15611).
@@ -324,6 +325,9 @@ The [XY-S acceptance check](research/xy-s-validation.md) records geometry gates,
 
 The generated meshes satisfy the automated geometry checks. The current patched
 Ubuntu host also passes the [XY-S slicing check](research/xy-s-software-validation.md).
+The [Z and persistence check](research/z-persistence-validation.md) confirms
+changed Z trajectories and restoration of both shrinkage values from manually
+saved presets and projects in fresh processes; all 146 software tests pass.
 No physical result is claimed. Release approval still requires the
 physical trials defined in `prototypes/README.md`, using multiple prints,
 operators, and calipers. In particular, the smaller XY section must pass the

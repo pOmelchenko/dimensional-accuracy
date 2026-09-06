@@ -1,0 +1,261 @@
+{
+  "apply_status": "CONFIRMED",
+  "artifact_identity_source": "expected_selected_gauge; match the physical print label",
+  "artifacts": {
+    "z": {
+      "id": "DA-Z-B",
+      "revision": 1
+    }
+  },
+  "baseline": {
+    "z_shrinkage": {
+      "known": true,
+      "numeric": 0,
+      "raw": "0.0"
+    }
+  },
+  "inputs": {
+    "apply_uniform_scale": false,
+    "apply_z_shrinkage": true,
+    "calibrate_xy": false,
+    "calibrate_z": true,
+    "caliper_id": "",
+    "confirm_apply_capable_host": true,
+    "confirm_zero_compensation": true,
+    "filament": "",
+    "mpe_mm": "",
+    "operator_id": "",
+    "preset_ids": "",
+    "printer_nozzle": "",
+    "resolution_mm": "",
+    "session_id": "",
+    "show_metadata": false,
+    "show_xy_steps": false,
+    "show_xy_walls": false,
+    "show_xy_widths": false,
+    "show_xy_windows": false,
+    "slicer_version": "",
+    "x_cross15": "",
+    "x_inner10": "",
+    "x_inner45": "",
+    "x_long100": "",
+    "x_overall145": "",
+    "x_root30": "",
+    "x_short30": "",
+    "x_span85": "",
+    "x_step_middle30": "",
+    "x_step_tip30": "",
+    "x_wall_middle7_5": "",
+    "x_wall_straight7_5": "",
+    "x_wall_wide17_5": "",
+    "x_width15": "",
+    "x_width25": "",
+    "x_width35": "",
+    "y_cross15": "",
+    "y_inner10": "",
+    "y_inner45": "",
+    "y_long100": "",
+    "y_overall145": "",
+    "y_root30": "",
+    "y_short30": "",
+    "y_span85": "",
+    "y_step_middle30": "",
+    "y_step_tip30": "",
+    "y_wall_middle7_5": "",
+    "y_wall_straight7_5": "",
+    "y_wall_wide17_5": "",
+    "y_width15": "",
+    "y_width25": "",
+    "y_width35": "",
+    "z120": "119.4;119.4;119.4",
+    "z40": "39.8;39.8;39.8",
+    "z80": "79.6;79.6;79.6"
+  },
+  "metadata": {
+    "caliper_id": "",
+    "filament": "",
+    "missing": [
+      "session_id",
+      "operator_id",
+      "caliper_id",
+      "slicer_version",
+      "printer_nozzle",
+      "filament",
+      "preset_ids",
+      "resolution_mm",
+      "mpe_mm"
+    ],
+    "operator_id": "",
+    "preset_ids": "",
+    "printer_nozzle": "",
+    "session_id": "",
+    "slicer_version": "",
+    "source": "operator_entered"
+  },
+  "plan": {
+    "z": {
+      "fit": {
+        "contour_compensation": 0,
+        "correction_scale": 1.0050251256281406,
+        "intercept": 0,
+        "max_residual": 1.4210854715202004e-14,
+        "measurements": [
+          {
+            "aggregation": "median",
+            "feature_id": "z40",
+            "mad_mm": 0,
+            "max_mm": 39.8,
+            "mean_mm": 39.8,
+            "median_mm": 39.8,
+            "min_mm": 39.8,
+            "n": 3,
+            "nominal_mm": 40,
+            "range_mm": 0,
+            "raw_input": "39.8;39.8;39.8",
+            "raw_tokens": [
+              "39.8",
+              "39.8",
+              "39.8"
+            ],
+            "sample_sd_mm": 0,
+            "values_mm": [
+              39.8,
+              39.8,
+              39.8
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "z80",
+            "mad_mm": 0,
+            "max_mm": 79.6,
+            "mean_mm": 79.6,
+            "median_mm": 79.6,
+            "min_mm": 79.6,
+            "n": 3,
+            "nominal_mm": 80,
+            "range_mm": 0,
+            "raw_input": "79.6;79.6;79.6",
+            "raw_tokens": [
+              "79.6",
+              "79.6",
+              "79.6"
+            ],
+            "sample_sd_mm": 0,
+            "values_mm": [
+              79.6,
+              79.6,
+              79.6
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "z120",
+            "mad_mm": 0,
+            "max_mm": 119.4,
+            "mean_mm": 119.40000000000002,
+            "median_mm": 119.4,
+            "min_mm": 119.4,
+            "n": 3,
+            "nominal_mm": 120,
+            "range_mm": 0,
+            "raw_input": "119.4;119.4;119.4",
+            "raw_tokens": [
+              "119.4",
+              "119.4",
+              "119.4"
+            ],
+            "sample_sd_mm": 1.7404671430534633e-14,
+            "values_mm": [
+              119.4,
+              119.4,
+              119.4
+            ]
+          }
+        ],
+        "models": {
+          "M0": {
+            "descriptive_shrinkage_percent": 0.5000000000000004,
+            "max_residual_mm": 0,
+            "observed_additive_term_mm": 0,
+            "parameters": 1,
+            "residual_degrees_of_freedom": 2,
+            "residuals_mm": [
+              0,
+              0,
+              0
+            ],
+            "rms_mm": 0,
+            "slope": 0.995,
+            "sse_mm2": 0
+          },
+          "M1": {
+            "descriptive_shrinkage_percent": 0.49999999999998934,
+            "max_residual_mm": 1.4210854715202004e-14,
+            "observed_additive_term_mm": 0,
+            "parameters": 2,
+            "residual_degrees_of_freedom": 1,
+            "residuals_mm": [
+              -7.105427357601002e-15,
+              -1.4210854715202004e-14,
+              0
+            ],
+            "rms_mm": 9.173067274558417e-15,
+            "slope": 0.9950000000000001,
+            "sse_mm2": 2.524354896707238e-28
+          },
+          "contour_correction_status": "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE",
+          "curvature_hint_mm": 0,
+          "descriptive_proposal_model": "M1_LEGACY",
+          "maximum_repeat_range_mm": 0,
+          "reason": "M1 has only one residual degree of freedom. Smaller RMS does not establish a physical cause or a better correction; independent prints and a correction trial are required.",
+          "rms_reduction_mm": -9.173067274558417e-15,
+          "selection_status": "NOT_ESTABLISHED",
+          "slope_difference": 1.1102230246251565e-16,
+          "uncertainty_status": "NOT_ESTIMATED"
+        },
+        "rms": 9.173067274558417e-15,
+        "slope": 0.9950000000000001
+      },
+      "shrinkage_percent": 0.49999999999998934
+    }
+  },
+  "plugin_version": "0.11.0",
+  "proposed_settings": [
+    {
+      "before": {
+        "known": true,
+        "numeric": 0,
+        "raw": "0.0"
+      },
+      "delta": 0.49999999999998934,
+      "key": "filament_shrinkage_compensation_z",
+      "owner": "filament_slot_1",
+      "proposed": 0.49999999999998934,
+      "write_requested": true
+    }
+  ],
+  "readback": {
+    "settings": [
+      {
+        "actual_percent": 0.49999999999998934,
+        "error_percent": 0,
+        "expected_percent": 0.49999999999998934,
+        "key": "filament_shrinkage_compensation_z",
+        "raw": "0.49999999999999",
+        "status": "MATCHED"
+      }
+    ],
+    "tolerance_percent": 1e-06
+  },
+  "readback_status": "MATCHED",
+  "schema_version": "1.3.0",
+  "severity": "WARN",
+  "solver_version": "3.0.0",
+  "verification_status": "NOT_VERIFIED",
+  "warnings": [
+    "Incomplete provenance: session_id, operator_id, caliper_id, slicer_version, printer_nozzle, filament, preset_ids, resolution_mm, mpe_mm",
+    "Z M0/M1 model selection is not established; the legacy M1 proposal remains experimental"
+  ],
+  "workflow_state": "APPLY_ATTEMPTED"
+}

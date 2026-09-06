@@ -1,0 +1,33 @@
+{
+  "status": "SAVED_VALUES_MATCH_REOPENED_API",
+  "physical_validation": "NOT_ESTABLISHED",
+  "tolerance_percent": 1e-06,
+  "expected_percent": {
+    "filament_shrinkage_compensation_xy": 0.5000000000000004,
+    "filament_shrinkage_compensation_z": 0.49999999999998934
+  },
+  "saved_project_percent": {
+    "filament_shrinkage_compensation_xy": 0.5000000000000004,
+    "filament_shrinkage_compensation_z": 0.49999999999998934
+  },
+  "reopened_percent": {
+    "preset": {
+      "filament_shrinkage_compensation_xy": 0.5000000000000004,
+      "filament_shrinkage_compensation_z": 0.49999999999998934
+    },
+    "project": {
+      "filament_shrinkage_compensation_xy": 0.5000000000000004,
+      "filament_shrinkage_compensation_z": 0.49999999999998934
+    }
+  },
+  "saved_project_material_name": "Prusament PLA @MK2.5_MK3 0.4",
+  "process_isolation_evidence": "See GUI procedure, screenshots and z-persistence-provenance.json",
+  "sha256": {
+    "SYNTHETIC-xy-apply.json": "ac3882acf63bbc3db4bea056f5bfd2663c045f0ed4c438c7944ee8de05ce604d",
+    "SYNTHETIC-z-apply.json": "da2ce7a664cc57be4afa3c0534d94ea163439857b8990a7100cfa98d6a9d1ee5",
+    "SYNTHETIC-preset-reopened.json": "db7fcd7d77d10d928e7cfada34015089e1798d89d407ab9673ee8b5e6cf1bce6",
+    "SYNTHETIC-project-reopened.json": "db7fcd7d77d10d928e7cfada34015089e1798d89d407ab9673ee8b5e6cf1bce6",
+    "SYNTHETIC-saved-filament.yaml": "a630038512e9e1ae21856a2bfe0f40d9b0f511d09beaadca135c0b3204eba8c7",
+    "SYNTHETIC-XY-Z-0p5.3mf": "b477b6b6bb3719720d4507432184bf6ea0bf2e649bfcce62d6a7d150812cfb78"
+  }
+}

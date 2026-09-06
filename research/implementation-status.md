@@ -16,6 +16,12 @@ apply of 0.5% XY shrinkage changes the exported trajectories after reslicing in
 the same Ubuntu GUI process. The evidence is saved in the repository. All
 entered readings are synthetic; physical trials remain outstanding.
 
+The [Z reslicing and persistence check](z-persistence-validation.md) additionally
+confirms changed Z-B print layers after a 0.5% plugin apply and recovery of both
+XY/Z values after manual preset/project saves and independent application
+restarts. Native settings and preview-only API reads agree. All 146 tests pass.
+No additional runtime or host patch was needed; CI repair remains deferred.
+
 # Implementation and verification — 2026-09-05
 
 The five selected software tasks are implemented. This is an implementation
@@ -92,8 +98,8 @@ on this machine; CI retains regeneration and canonical geometry comparison.
 
 At the original milestone audit, no physical trial, GUI host test, fresh slicing
 test, signed release or remote publication was performed. Later development
-GUI and XY-S reslicing checks are recorded above; physical trials and a signed
-release remain outstanding. Source inspection confirms that the new runtime code
+GUI, XY/Z reslicing and preset/project restart checks are recorded above;
+physical trials and a signed release remain outstanding. Source inspection confirms that the new runtime code
 uses only the permitted base/table/math/string libraries; the host disallows
 `io`/`os`/`dofile`/`loadfile`, so export/replay are deliberately external tools.
 The inspected source also permits the table-only metatables used to serialize

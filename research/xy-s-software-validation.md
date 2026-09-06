@@ -120,5 +120,8 @@ is deliberately scoped to this axis-aligned single-material XY-S case. This
 does not establish Z shrinkage, multi-object/multi-material behavior, disk
 persistence of presets or printed accuracy.
 
+The subsequent [Z and persistence check](z-persistence-validation.md) separately
+verifies Z shrinkage and manually saved preset/project values after restart.
+
 The isolated application and Xvfb session were stopped after export. The next
 physical step is still the [baseline/verification experiment](xy-s-experiment.md).

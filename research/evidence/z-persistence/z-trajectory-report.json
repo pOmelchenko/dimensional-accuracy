@@ -1,0 +1,133 @@
+{
+  "status": "Z_TRAJECTORY_SCALE_CONFIRMED",
+  "physical_validation": "NOT_ESTABLISHED",
+  "artifact_id": "DA-Z-B",
+  "artifact_revision": 1,
+  "z_shrinkage_percent": 0.49999999999998934,
+  "scale_factor": 1.0050251256281406,
+  "unchanged_layer_height_mm": 0.15,
+  "quantization_tolerance_mm": 0.15001,
+  "baseline_layer_count": 800,
+  "compensated_layer_count": 804,
+  "baseline_last_print_z_mm": 120.05,
+  "compensated_last_print_z_mm": 120.65,
+  "unchanged_xy_base_mm": [
+    52,
+    24
+  ],
+  "changed_config_keys": [
+    "filament_shrinkage_compensation_z"
+  ],
+  "steps": [
+    {
+      "nominal_mm": 40,
+      "baseline": {
+        "nominal_mm": 40,
+        "probe_x_mm": 111.0,
+        "top_print_z_mm": 39.95,
+        "line": 49696,
+        "segment_start": [
+          116.522,
+          114.5
+        ],
+        "segment_end": [
+          105.478,
+          114.5
+        ]
+      },
+      "compensated": {
+        "nominal_mm": 40,
+        "probe_x_mm": 111.0,
+        "top_print_z_mm": 40.25,
+        "line": 50148,
+        "segment_start": [
+          116.522,
+          114.401
+        ],
+        "segment_end": [
+          105.478,
+          114.401
+        ]
+      },
+      "expected_continuous_z_mm": 40.201005025125625,
+      "expected_delta_mm": 0.20100502512562457,
+      "observed_delta_mm": 0.29999999999999716,
+      "delta_error_mm": 0.09899497487437259
+    },
+    {
+      "nominal_mm": 80,
+      "baseline": {
+        "nominal_mm": 80,
+        "probe_x_mm": 125.0,
+        "top_print_z_mm": 80.0,
+        "line": 82862,
+        "segment_start": [
+          130.522,
+          114.45
+        ],
+        "segment_end": [
+          119.478,
+          114.45
+        ]
+      },
+      "compensated": {
+        "nominal_mm": 80,
+        "probe_x_mm": 125.0,
+        "top_print_z_mm": 80.45,
+        "line": 83383,
+        "segment_start": [
+          130.522,
+          114.402
+        ],
+        "segment_end": [
+          119.478,
+          114.402
+        ]
+      },
+      "expected_continuous_z_mm": 80.40201005025125,
+      "expected_delta_mm": 0.40201005025124914,
+      "observed_delta_mm": 0.45000000000000284,
+      "delta_error_mm": 0.0479899497487537
+    },
+    {
+      "nominal_mm": 120,
+      "baseline": {
+        "nominal_mm": 120,
+        "probe_x_mm": 139.0,
+        "top_print_z_mm": 120.05,
+        "line": 108755,
+        "segment_start": [
+          144.522,
+          114.4
+        ],
+        "segment_end": [
+          133.478,
+          114.4
+        ]
+      },
+      "compensated": {
+        "nominal_mm": 120,
+        "probe_x_mm": 139.0,
+        "top_print_z_mm": 120.65,
+        "line": 109371,
+        "segment_start": [
+          144.522,
+          114.403
+        ],
+        "segment_end": [
+          133.478,
+          114.403
+        ]
+      },
+      "expected_continuous_z_mm": 120.60301507537687,
+      "expected_delta_mm": 0.6030150753768737,
+      "observed_delta_mm": 0.6000000000000085,
+      "delta_error_mm": -0.003015075376865184
+    }
+  ],
+  "sha256": {
+    "baseline_gcode": "3a567a4101ce82f3be3b37cbcfd7888e88637dea1e77d89d76ece1b171af64a9",
+    "compensated_gcode": "8abfd389c77c25d0003c0d98f670986676253f2a13744beb2c6e1e881b22c757",
+    "apply_result": "da2ce7a664cc57be4afa3c0534d94ea163439857b8990a7100cfa98d6a9d1ee5"
+  }
+}

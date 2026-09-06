@@ -1,0 +1,76 @@
+make: Entering directory '/home/omelchenko/prusaslicer-alpha/dimensional-accuracy'
+python3 tools/artifact_spec.py check
+Artifact specification and projections agree
+LUA="lua" python3 -m unittest discover -s tests -p 'test_*.py'
+......................................................................................
+----------------------------------------------------------------------
+Ran 86 tests in 2.911s
+
+OK
+lua tests/test_calculate_compensation.luatest
+ok 1 - measurement tooltip examples are accepted by the actual repeated-reading parser
+ok 2 - metadata uses safe controls and defaults
+ok 3 - measurement parser accepts dot and decimal comma
+ok 4 - measurement parser rejects non-decimal input
+ok 5 - fit returns the expected linear model
+ok 6 - monotonicity gate rejects swapped fields
+ok 7 - nominal-deviation gate rejects an implausible point
+ok 8 - individual-residual gate rejects an outlier
+ok 9 - RMS gate rejects a nonlinear fit
+ok 10 - intercept gate rejects a large fixed offset
+ok 11 - anisotropy gate rejects a common XY scale
+ok 12 - clamping gate rejects an unsupported result
+ok 13 - config values support scalars percentage text and exposed value
+ok 14 - preview never writes and warns about a nonzero baseline
+ok 15 - nonzero baseline blocks every selected write
+ok 16 - apply requires explicit confirmation of a capable host
+ok 17 - apply requires confirmation of how the exact gauge was printed
+ok 18 - confirmed unreadable percentage baseline can reach a write attempt
+ok 19 - invalid Z prevents otherwise valid XY writes
+ok 20 - valid combined apply confirms fresh numeric readback separately from physical verification
+ok 21 - nil-returning silent no-op is never reported as applied
+ok 22 - setter failure makes an unverified best-effort rollback attempt
+ok 23 - rollback exception is reported without claiming rollback state
+ok 24 - repeats retain raw input and calculate descriptive statistics
+ok 25 - empty repeats and invalid counts are not silently removed
+ok 26 - single reading remains preview-only with recorded warning
+ok 27 - structured result preserves provenance and keeps verification separate
+ok 28 - contour apply is rejected even with explicit host and baseline confirmations
+ok 29 - pure scale makes M0 and M1 agree without establishing a physical winner
+ok 30 - M1 recovers synthetic parameters and never has larger SSE than nested M0
+ok 31 - middle span affects curvature and residuals but not M1 slope
+ok 32 - solver v1 replay excludes later diagnostics and preserves the frozen plan shape
+ok 33 - nil host readbacks remain readable as unknown in preview JSON
+ok 34 - result window distinguishes a proposal and its change from a preset write
+ok 35 - result window keeps unknown baseline and invalid input explicit
+ok 36 - result display failure cannot turn a completed calculation into apply failure
+ok 37 - readback uses a fresh preset and reports every requested axis on partial mismatch
+ok 38 - unreadable post-write values cannot be confirmed and do not hide other readbacks
+ok 39 - losing access to the active preset leaves all writes unconfirmed
+ok 40 - readback compares full precision with an absolute percentage-point tolerance
+ok 41 - Z-only apply reads back only Z and accepts numeric percentage text
+ok 42 - a known mismatch takes precedence when another selected readback is unreadable
+ok 43 - form context rereads the name of material slot one without writes
+ok 44 - form context keeps missing preset names explicit on legacy or unavailable hosts
+ok 45 - preset name control characters do not create extra form lines
+ok 46 - form context returns the current slot color independently of the preset name
+ok 47 - missing or invalid context colors preserve the legacy single-text return
+ok 48 - XY-S separates depth scale from outside and inside offsets
+ok 49 - optional correlated dimensions cannot change the primary scale
+ok 50 - optional contradictions stay reviewable but block all writes
+ok 51 - XY-S rejects missing primary data and cannot reuse an old grid form
+ok 52 - optional hidden fields retain strict validation and repeat policy
+ok 53 - walls without windows are recorded without an invented inner offset
+ok 54 - disagreeing windows are not hidden by their average
+ok 55 - XY form uses only supported visibility dependencies and catalog fields
+All 55 calculator tests passed
+lua tests/test_generate_gauge.luatest
+ok 1 - metadata has safe gauge defaults
+ok 2 - XY selection loads the XY runtime model once
+ok 3 - Z selection loads the Z runtime model once
+ok 4 - combined selection loads the XYZ runtime model once
+ok 5 - empty selection errors without loading or adding an object
+All 5 generator tests passed
+luac -p calculate_compensation.lua generate_gauge.lua
+python3 -m json.tool manifest.json >/dev/null
+make: Leaving directory '/home/omelchenko/prusaslicer-alpha/dimensional-accuracy'
