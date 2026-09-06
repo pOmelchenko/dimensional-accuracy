@@ -1,0 +1,52 @@
+{
+  "source_head": "5f096a3cd060d5dcf4e814c53cfb06fd6fc7e332",
+  "source_diff_sha256": "cc2caec4c91cea0f54edd2e52c95fdc9e03e1fc9bc1487c208d797483e80ca3e",
+  "source_status": " M doc/Plugin_API.md\n M src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp\n M src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp\n M src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp\n M src/slic3r-shared/test/Slic3r/App/Lua/PluginDialogTests.cpp\n M src/slic3r-shared/test/Slic3r/App/Lua/ProjectApiTests.cpp\n",
+  "files": {
+    "build/slicer/src/slic3r-app-launcher/slic3r-app-launcher": "fd8a50afbf550820fa7b5145e2a74d62fd8e3c26b3897b1f0d9b6a482d35666b",
+    "build/slicer/src/OCCTWrapper.so": "f4442ef487c2c28d2c628a46fba72cba28fafd6bc77fcff9ff2bc4ccc42a907c",
+    "build/slicer/src/slic3r-shared/OCCTWrapper.so": "f4442ef487c2c28d2c628a46fba72cba28fafd6bc77fcff9ff2bc4ccc42a907c",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/manifest.json": "c9189d6c48c0cd5b19f04b1405305c979e4af3527b85390d58d6e56ae55a0c1a",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/calculate_compensation.lua": "341e0cc8a92ef256ab654170e536c91197a1476ebea93be536932b7f0046e824",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/generate_gauge.lua": "5b08445bcab022b0414e414a4843b15f5cd83e3e3206787d3494afcbaf066dac",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_z_gauge.stl": "8ee7cb85fe61e4eaf99db12af788e82791fb460986ed8ac100d0e71589c12615",
+    "SYNTHETIC-z-baseline.gcode": "3a567a4101ce82f3be3b37cbcfd7888e88637dea1e77d89d76ece1b171af64a9",
+    "SYNTHETIC-z-compensated.gcode": "8abfd389c77c25d0003c0d98f670986676253f2a13744beb2c6e1e881b22c757",
+    "SYNTHETIC-XY-Z-0p5.3mf": "b477b6b6bb3719720d4507432184bf6ea0bf2e649bfcce62d6a7d150812cfb78",
+    "logs/z-persistence.log": "f6f187d4a16015d366b29cf30473cfd1d3cb131fa3023dcd66e711ab6ff6054a",
+    "logs/z-persistence-preset.log": "8f50198fabf5986eb92ef7dad4395a8b86812b3dab429b44ec9d2e3871d98fb0",
+    "logs/z-persistence-project.log": "1b19f00c15af3d11c12d7c548e19ebef5db98f72f3c0dece60bba93122e9cebb",
+    "z-persistence-config-final/presets/user/prusa-research-fff/PrusaResearch/filament-Prusament PLA - Copy.yaml": "a630038512e9e1ae21856a2bfe0f40d9b0f511d09beaadca135c0b3204eba8c7",
+    "z-persistence-preset-config/presets/user/prusa-research-fff/PrusaResearch/filament-Prusament PLA - Copy.yaml": "a630038512e9e1ae21856a2bfe0f40d9b0f511d09beaadca135c0b3204eba8c7"
+  },
+  "gui_sessions": {
+    "initial": {
+      "app_pid": 97123,
+      "app_exited": true,
+      "datadir": "/home/omelchenko/prusaslicer-alpha/z-persistence-config-final",
+      "user_preset_files": {
+        "presets/user/prusa-research-fff/PrusaResearch/filament-Prusament PLA - Copy.yaml": "a630038512e9e1ae21856a2bfe0f40d9b0f511d09beaadca135c0b3204eba8c7"
+      },
+      "plugin_target": "/home/omelchenko/prusaslicer-alpha/dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy"
+    },
+    "preset": {
+      "app_pid": 125143,
+      "app_exited": true,
+      "datadir": "/home/omelchenko/prusaslicer-alpha/z-persistence-preset-config",
+      "user_preset_files": {
+        "presets/user/prusa-research-fff/PrusaResearch/filament-Prusament PLA - Copy.yaml": "a630038512e9e1ae21856a2bfe0f40d9b0f511d09beaadca135c0b3204eba8c7"
+      },
+      "plugin_target": "/home/omelchenko/prusaslicer-alpha/dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy"
+    },
+    "project": {
+      "app_pid": 127986,
+      "app_exited": true,
+      "datadir": "/home/omelchenko/prusaslicer-alpha/z-persistence-project-config",
+      "user_preset_files": {},
+      "plugin_target": "/home/omelchenko/prusaslicer-alpha/dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy"
+    }
+  },
+  "xvfb_pid": 97116,
+  "os_release": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "architecture": "aarch64"
+}

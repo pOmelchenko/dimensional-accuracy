@@ -1,0 +1,79 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install the generation and test toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            fonts-liberation lua5.4 openscad xauth xvfb
+          openscad --version
+          lua5.4 -v
+          fc-match "Liberation Sans:style=Bold"
+
+      - name: Run Python and Lua regression tests
+        run: make LUA=lua5.4 LUAC=luac5.4 test
+
+      - name: Verify and preserve committed geometry
+        run: |
+          make verify-existing
+          make verify-prototypes-existing
+          mkdir -p "$RUNNER_TEMP/committed-stl"
+          cp dimensional_accuracy_gauge.stl \
+            dimensional_accuracy_z_gauge.stl \
+            dimensional_accuracy_xyz_gauge.stl \
+            prototypes/dimensional_accuracy_xy_7x5.stl \
+            prototypes/dimensional_accuracy_zc40.stl \
+            "$RUNNER_TEMP/committed-stl/"
+
+      - name: Regenerate and verify release artifacts
+        run: |
+          make clean
+          make OPENSCAD="xvfb-run -a openscad" release
+          make verify
+          test ! -e prototypes/dimensional_accuracy_xy_7x5.stl
+          test ! -e prototypes/dimensional_accuracy_zc40.stl
+          python3 tools/verify_stl.py dimensional_accuracy_gauge.stl \
+            --compare-geometry "$RUNNER_TEMP/committed-stl/dimensional_accuracy_gauge.stl"
+          python3 tools/verify_stl.py dimensional_accuracy_z_gauge.stl \
+            --compare-geometry "$RUNNER_TEMP/committed-stl/dimensional_accuracy_z_gauge.stl"
+          python3 tools/verify_stl.py dimensional_accuracy_xyz_gauge.stl \
+            --expect-components 2 \
+            --compare-geometry "$RUNNER_TEMP/committed-stl/dimensional_accuracy_xyz_gauge.stl"
+
+      - name: Verify opt-in research prototypes
+        run: |
+          make OPENSCAD="xvfb-run -a openscad" verify-prototypes
+          python3 tools/verify_stl.py \
+            prototypes/dimensional_accuracy_xy_7x5.stl \
+            --compare-geometry "$RUNNER_TEMP/committed-stl/dimensional_accuracy_xy_7x5.stl"
+          python3 tools/verify_stl.py \
+            prototypes/dimensional_accuracy_zc40.stl \
+            --compare-geometry "$RUNNER_TEMP/committed-stl/dimensional_accuracy_zc40.stl"
+
+      - name: Check the staged plugin payload
+        run: |
+          make stage-plugin
+          test "$(find build/dev.omelchenko.dimensional-accuracy -type f | wc -l)" -eq 7
+          test -f build/dev.omelchenko.dimensional-accuracy/LICENSE
+          test -f build/dev.omelchenko.dimensional-accuracy/manifest.json
+          test -f build/dev.omelchenko.dimensional-accuracy/generate_gauge.lua
+          test -f build/dev.omelchenko.dimensional-accuracy/calculate_compensation.lua
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_gauge.stl
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_z_gauge.stl
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_xyz_gauge.stl
