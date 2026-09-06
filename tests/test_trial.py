@@ -41,6 +41,13 @@ class TrialTests(unittest.TestCase):
         self.assertEqual(rows, trial.make_schedule(config, artifacts)[0])
         self.assertNotEqual(rows, trial.make_schedule(dict(config, seed=98), artifacts)[0])
 
+    def test_new_release_cannot_change_the_legacy_model_comparison(self):
+        config, _ = self.init(families=["xy"])
+        artifacts = trial.artifacts_for(["xy"])
+        self.assertEqual([a["artifact_id"] for a in artifacts], ["DA-XY-A", "DA-XY-T"])
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            trial.make_schedule(config, artifacts + [dict(artifacts[0], artifact_id="DA-XY-S")])
+
     def test_pilot_and_single_family(self):
         config, rows = self.init(families=["z"], calipers=2)
         self.assertEqual(config["study_kind"], "pilot")

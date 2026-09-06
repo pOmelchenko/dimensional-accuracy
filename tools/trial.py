@@ -64,10 +64,13 @@ def finite(value, label, positive=False):
 
 def artifacts_for(families, spec=None):
     spec = load_spec() if spec is None else spec
+    # Protocol v1 compares these two historical constructions per family.
+    # Adding a new release control must not silently change that experiment.
+    legacy_ids = {"DA-XY-A", "DA-XY-T", "DA-Z-B", "DA-Z-C40"}
     return [dict(artifact_id=a["artifact_id"], artifact_revision=a["revision"],
                  role=a["role"], family=a["family"], stl_file=a["file"], stl_sha256="")
             for family in families for a in spec["artifacts"]
-            if a["family"] == family and a["role"] in ("control", "challenger")]
+            if a["family"] == family and a["artifact_id"] in legacy_ids]
 
 
 
@@ -79,6 +82,8 @@ def make_schedule(config, artifacts, spec=None):
     block_counter = 0
     for family in config["families"]:
         models = [a for a in artifacts if a["family"] == family]
+        if len(models) != 2 or {m["role"] for m in models} != {"control", "challenger"}:
+            raise ValueError("legacy protocol requires exactly one control and one challenger per family")
         codes = [family.upper() + "-A", family.upper() + "-B"]
         rng.shuffle(codes)
         specimens = []

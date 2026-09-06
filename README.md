@@ -29,6 +29,8 @@ Automatic application is not supported on that build: Lua preset setters bypass
 preset-change notifications, so the settings UI and slicing state may remain
 stale after the calls. An apply-capable host must include both the preset-update
 fix and the material-override activation fix before this workflow is tested.
+The current combined development patches pass the recorded
+[XY-S apply and reslicing check](research/xy-s-software-validation.md).
 
 The PrusaSlicer float-control defect is tracked in
 [prusa3d/PrusaSlicer#15611](https://github.com/prusa3d/PrusaSlicer/issues/15611).
@@ -262,6 +264,13 @@ results remain replayable using their original solver version.
 
 ## Research tooling
 
+For the current XY-S reference, use the [baseline/verification experiment](research/xy-s-experiment.md)
+and its [blank measurement table](research/templates/xy-s-first/measurements.csv).
+`tools/xy_experiment.py` prepares all 32 dimensions, preserves repeated readings
+and compares before/after errors using the production Lua calculation.
+The [software validation report](research/xy-s-software-validation.md) records
+synthetic analysis cases and actual Ubuntu plugin apply/reslice/G-code checks.
+
 Prepare the versioned geometry-selection experiment with `python3 tools/trial.py`.
 The [trial guide](prototypes/README.md) covers deterministic schedules, immutable
 protocol/provenance, raw observations and the distinction between pilot and full
@@ -313,8 +322,9 @@ retriangulation. These checks do not replace slicing or physical measurements.
 The [XY-S acceptance check](research/xy-s-validation.md) records geometry gates,
 119 software tests and the Ubuntu dialog/export/replay check for plugin 0.11.0.
 
-The generated meshes satisfy the automated geometry checks. No physical result
-is claimed. Release approval still requires recorded slicing results and the
+The generated meshes satisfy the automated geometry checks. The current patched
+Ubuntu host also passes the [XY-S slicing check](research/xy-s-software-validation.md).
+No physical result is claimed. Release approval still requires the
 physical trials defined in `prototypes/README.md`, using multiple prints,
 operators, and calipers. In particular, the smaller XY section must pass the
 rigidity/repeatability check and Z-C may replace Z-B only if it is no worse in

@@ -10,6 +10,12 @@ The accepted v10 mesh has been promoted unchanged; Z-B remains unchanged.
 The form collects six primary measurements plus 26 optional checks through
 existing dialog capabilities. No new PrusaSlicer patch is required.
 
+The subsequent [XY-S experiment and slicing check](xy-s-software-validation.md)
+prepares the 32-dimension before/after protocol and confirms that a real plugin
+apply of 0.5% XY shrinkage changes the exported trajectories after reslicing in
+the same Ubuntu GUI process. The evidence is saved in the repository. All
+entered readings are synthetic; physical trials remain outstanding.
+
 # Implementation and verification — 2026-09-05
 
 The five selected software tasks are implemented. This is an implementation
@@ -86,7 +92,7 @@ on this machine; CI retains regeneration and canonical geometry comparison.
 
 At the original milestone audit, no physical trial, GUI host test, fresh slicing
 test, signed release or remote publication was performed. Later development
-GUI checks are recorded above; physical trials, fresh slicing and a signed
+GUI and XY-S reslicing checks are recorded above; physical trials and a signed
 release remain outstanding. Source inspection confirms that the new runtime code
 uses only the permitted base/table/math/string libraries; the host disallows
 `io`/`os`/`dofile`/`loadfile`, so export/replay are deliberately external tools.

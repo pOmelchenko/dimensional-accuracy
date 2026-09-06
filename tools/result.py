@@ -169,17 +169,22 @@ def compare(actual, expected, path="plan"):
         raise ValueError(f"replay mismatch: {path}")
 
 
+def calculate(inputs, solver_version, lua="lua"):
+    """Run the production pure solver, with no host API or setting writes."""
+    with tempfile.TemporaryDirectory(prefix="da-replay-") as directory:
+        input_file = Path(directory) / "inputs.luatest"
+        input_file.write_text("return " + lua_literal(inputs) + "\n", encoding="utf-8")
+        completed = subprocess.run([lua, str(ROOT / "tools/replay_result.luatest"),
+                                    str(ROOT / "calculate_compensation.lua"), str(input_file), solver_version],
+                                   capture_output=True, text=True, check=True, timeout=30)
+    return strict_json(completed.stdout)
+
+
 def replay(record, lua="lua"):
     validate_record(record)
     if "plan" not in record:
         raise ValueError("this record has no calculated plan; raw inputs and refusal are preserved")
-    with tempfile.TemporaryDirectory(prefix="da-replay-") as directory:
-        inputs = Path(directory) / "inputs.luatest"
-        inputs.write_text("return " + lua_literal(record["inputs"]) + "\n", encoding="utf-8")
-        completed = subprocess.run([lua, str(ROOT / "tools/replay_result.luatest"),
-                                    str(ROOT / "calculate_compensation.lua"), str(inputs), record["solver_version"]],
-                                   capture_output=True, text=True, check=True, timeout=30)
-    actual = strict_json(completed.stdout)
+    actual = calculate(record["inputs"], record["solver_version"], lua)
     compare(actual, record["plan"])
     return actual
 
