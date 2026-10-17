@@ -64,7 +64,7 @@ bundle as a runtime plugin. Development staging needs Python 3 plus Lua 5.4;
 the release target additionally needs OpenSCAD.
 
 ```bash
-git clone --branch fix/lua-plugin-settings \
+git clone --branch main \
   https://github.com/pOmelchenko/dimensional-accuracy.git
 cd dimensional-accuracy
 make stage-plugin
