@@ -1,0 +1,1761 @@
+diff --git a/doc/Plugin_API.md b/doc/Plugin_API.md
+index 12b53b0265..5b37ec1fdb 100644
+--- a/doc/Plugin_API.md
++++ b/doc/Plugin_API.md
+@@ -86,6 +86,76 @@ The table `info` describes plugin with following keys:
+     - `bool` (UI: checkbox)
+   - `default` (number or string) default value
+ 
++### Optional dialog extensions (development host)
++
++The dialog patch adds optional `info.description` (wrapped instructions),
++`info.dialog_width` (400–1000 layout units) and `info.input_width` (preferred
++control-column width, clamped to 100–600; defaults to half the dialog width).
++Labels share a fixed left column and wrap; text/numeric fields and boolean
++switches start at the same position in the right column. The result's Show
++details switch uses the same alignment. Controls fill the available width,
++allowing room for a scrollbar. Tall forms scroll while Run and Cancel remain
++accessible. Width hints should leave room for labels.
++
++Each parameter may specify `visible_if = "boolean_parameter_name"`. Its row is
++shown while that boolean is true. Hiding a row preserves its value and still
++passes it to `execute`; plugins must validate selections independently of
++visibility. Missing or non-boolean dependencies leave the row visible.
++
++Each parameter may also specify `tooltip = "Help text"`. String, float and int
++fields and boolean toggles display this text on hover using the native settings
++tooltip. Newlines are preserved and long lines wrap at a width of 350 layout
++units. Content is plain text: markup, images and clickable links are not
++supported. Missing, empty or non-string tooltips leave the control without help.
++Tooltips do not execute the plugin and are not saved or passed to `execute`.
++Earlier hosts ignore this optional metadata.
++
++During execution, `api.show_result(summary, details)` displays plain text in the
++same dialog. Details are initially collapsed. Back returns to the retained form
++without executing the plugin, and Close dismisses the result. A plugin that
++does not call this function retains the normal close-on-Run behavior.
++For compatibility, check `type(api.show_result) == "function"` before calling.
++This is a presentation API and does not confirm preset writes or slicing state.
++
++Plugins may define an optional `describe()` function returning plain text and
++an optional second string containing a `#RRGGBB` color. On each menu opening the
++host reloads the script in a fresh Lua state with the project API and calls
++`describe()` before displaying the form. The text
++appears above the instructions and is also retained on the result page. It is
++read-only UI context, never an editable/saved parameter or an argument to
++`execute()`. Back retains it; reopening recomputes it for the current project.
++An empty first string hides the context. A valid color adds a bordered,
++non-interactive marker beside the text on both pages. Missing, non-string or
++invalid colors leave the text visible without a marker. Callback errors or a
++non-string first result show an unavailable-context notice and log the error;
++the form remains usable. Returning just the text remains supported.
++
++Keep top-level code and `describe()` free of project changes. Opening or
++cancelling a form must not apply settings, insert objects or emit a calculation
++result; `execute()` is not called until Run. Hosts without this extension ignore
++`describe()`. Plugins without it retain their original loading behavior.
++
++`api.project:current_bed():material_preset_info(slot_idx)` returns a copied table
++with the selected material preset's `id` and `name`, plus an optional `color`
++string in `#RRGGBB` form. The color is resolved from the project slot through
++the same accessor as the main material UI, including manual color overrides;
++it is not necessarily the preset's `filament_colour`. Missing slot colors omit
++the field. Slots are zero-based, as for `material_presets()`. An invalid slot
++raises a Lua error. The data describes
++the active selection; it does not identify a physical spool or certify saved
++preset persistence. Editing the returned table does not change the preset.
++
++```lua
++function describe()
++    local ok, preset = pcall(function()
++        return api.project:current_bed():material_preset_info(0)
++    end)
++    local text = "Filament preset: " .. (ok and preset.name or "unavailable") .. " (slot 1)"
++    if ok and preset.color then return text, preset.color end
++    return text -- Compatible with earlier context hosts that return no color.
++end
++```
++
+ ### Plugin `execute` function
+ 
+ The function `execute(params)` takes single argument,a table based upon description in the `info.params`. 
+@@ -129,6 +199,27 @@ There are two main restrictions to be aware of:
+ 
+ Plugin API reference is located [here](https://prusa.io/ps-plugins/)
+ 
++### Reading percentage settings
++
++`ConfigBox:value(name)` returns percentage-only settings as Lua numbers in
++percentage points. For example, a `filament_shrinkage_compensation_xy` value of
++`0.5%` is returned as `0.5`, not `0.005`. Zero and negative values use the same
++units. These values can be compared numerically and passed back to
++`ConfigBox:set(name, value)` without conversion:
++
++```lua
++local key = "filament_shrinkage_compensation_xy"
++local current = api.project:current_bed():material_presets(0):value(key)
++assert(type(current) == "number")
++```
++
++After a setter call, reacquire the active preset and read the selected value to
++check it against the requested value with an appropriate numeric tolerance.
++The setter itself provides no success status. Matching readback confirms the
++active setting; it does not verify the dimensions of a physical print or save
++a named user preset. This numeric return contract applies to `Percentage`,
++not to the distinct `FloatOrPercentage` setting type.
++
+ ## Plugin distribution
+ 
+ At the moment plugins can be distributed as signed zip files. The plugin author needs to generate her public and private 
+diff --git a/src/slic3r-shared/CMakeLists.txt b/src/slic3r-shared/CMakeLists.txt
+index 9af790d8f0..4e277e2f3b 100644
+--- a/src/slic3r-shared/CMakeLists.txt
++++ b/src/slic3r-shared/CMakeLists.txt
+@@ -1536,6 +1536,8 @@ if(SLIC3R_BUILD_TESTS)
+             test/main.cpp
+ 
+             test/Slic3r/App/DialogNavigationTests.cpp
++            test/Slic3r/App/Lua/PluginDialogTests.cpp
++            test/Slic3r/App/Lua/ProjectApiTests.cpp
+ 
+             test/Slic3r/App/Scene/Node.cpp
+             test/Slic3r/App/Scene/Ray.cpp
+diff --git a/src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp b/src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp
+index f0422be7f8..853c4b95a7 100644
+--- a/src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp
++++ b/src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp
+@@ -29,10 +29,20 @@ struct PluginParamDef
+     std::string label;
+     std::string type;
+     std::optional<PluginParamValue> default_value;
++    // Display-only dependency on a boolean parameter; hidden values are retained.
++    std::optional<std::string> visible_if;
++    // Optional plain-text help; never a saved parameter value.
++    std::optional<std::string> tooltip;
+ };
+ 
+ using PluginParamDefs = std::vector<PluginParamDef>;
+ 
++struct PluginContext
++{
++    std::string text;
++    std::optional<std::string> color;
++};
++
+ struct PluginMeta
+ {
+     std::string id;
+@@ -40,6 +50,12 @@ struct PluginMeta
+     std::optional<std::string> title;
+     std::vector<std::string> menu;
+     PluginParamDefs params;
++    std::optional<std::string> description;
++    std::optional<int> dialog_width;
++    std::optional<int> input_width;
++    bool has_description_callback{false};
++    // Fresh display-only text for this opening; never a saved input parameter.
++    std::optional<PluginContext> context;
+ };
+ 
+ 
+@@ -51,6 +67,7 @@ public:
+     const std::string& path() const { return m_path; }
+ 
+     void execute(Biz::Lua::LuaEngine& lua, const PluginParamValueMap& params) const;
++    std::optional<PluginContext> describe(Biz::Lua::LuaEngine& lua) const;
+ 
+     using ParseResult = tl::expected<Plugin, std::string>;
+     static ParseResult
+@@ -69,4 +86,4 @@ bool is_path_in_sandbox(
+     const boost::filesystem::path& tested_path
+ );
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp b/src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp
+index 64b71bab48..a37e304b6f 100644
+--- a/src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp
++++ b/src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp
+@@ -32,6 +32,7 @@ public:
+     explicit PluginDialog(ProcessFunction process_function);
+ 
+     void show_plugin(const PluginMeta& plugin_meta, const PluginParamValueMap& param_values);
++    void show_result(const std::string& summary, const std::string& details);
+ 
+ private:
+     void emplace_string_param(const PluginParamDef& param, std::optional<PluginParamValue> default_value);
+@@ -39,15 +40,24 @@ private:
+     void emplace_int_param(const PluginParamDef& param, std::optional<PluginParamValue> default_value);
+     void emplace_bool_param(const PluginParamDef& param, std::optional<PluginParamValue> default_value);
+ 
+-    Yoga::Item& emplace_row(const char* label=nullptr);
++    Yoga::Item& emplace_row(Yoga::Item& parent, const std::string& label);
+     void style_control(Yoga::Item& ctrl);
+ 
+     void collect_values(PluginParamValueMap& param_values) const;
++    void update_visibility();
++    void emplace_context(Yoga::Item& parent);
+ 
+ private:
+     std::optional<PluginMeta> m_meta;
+     Details::IParamControlMap m_param_controls;
+     ProcessFunction m_process_function;
++    std::map<std::string, Yoga::Item*> m_param_rows;
++    Yoga::Item* m_input_page{nullptr};
++    Yoga::Item* m_fields{nullptr};
++    Yoga::Item* m_result_page{nullptr};
++    Yoga::Text* m_summary{nullptr};
++    Yoga::Text* m_details{nullptr};
++    bool m_result_shown{false};
+ };
+ 
+ }
+diff --git a/src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp b/src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp
+index 302ee55d1c..407e80ebc4 100644
+--- a/src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp
++++ b/src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp
+@@ -113,6 +113,10 @@ Plugin::parse(Biz::Lua::LuaEngine& lua, const std::string& id_prefix, const std:
+     }
+     meta.type = type_result.value();
+     meta.title = info.get<std::optional<std::string>>("title");
++    meta.description = info.get<std::optional<std::string>>("description");
++    meta.dialog_width = info.get<std::optional<int>>("dialog_width");
++    meta.input_width = info.get<std::optional<int>>("input_width");
++    meta.has_description_callback = state["describe"].is<sol::function>();
+ 
+     if (meta.type != PluginType::ProjectPlugin) {
+         return tl::unexpected{fmt::format("Unsupported plugin type '{}'", to_string(meta.type))};
+@@ -135,7 +139,11 @@ Plugin::parse(Biz::Lua::LuaEngine& lua, const std::string& id_prefix, const std:
+             auto label = p.get_or<std::string>("label", name);
+             auto type = p.get<std::string>("type");
+             auto value = p.get<PluginParamValue>("default");
+-            meta.params.emplace_back(name, label, type, value);
++            std::optional<std::string> tooltip;
++            const sol::object help = p["tooltip"];
++            if (help.get_type() == sol::type::string) tooltip = help.as<std::string>();
++            meta.params.emplace_back(name, label, type, value,
++                p.get<std::optional<std::string>>("visible_if"), std::move(tooltip));
+         });
+     }
+ 
+@@ -149,6 +157,43 @@ Plugin::parse(Biz::Lua::LuaEngine& lua, const std::string& id_prefix, const std:
+ Plugin::Plugin(std::string path, PluginMeta meta) : m_path(std::move(path)), m_meta(std::move(meta))
+ {}
+ 
++std::optional<PluginContext> Plugin::describe(Biz::Lua::LuaEngine& lua) const
++{
++    // Existing plugins must not gain a second execution of their top-level code.
++    if (!m_meta.has_description_callback) return std::nullopt;
++
++    struct ResolverScope
++    {
++        Biz::Lua::LuaEngine& lua;
++        Biz::Lua::LuaEngine::FilePathResolveFn previous;
++        ~ResolverScope() { lua.set_path_resolver(std::move(previous)); }
++    } scope{lua, lua.path_resolver()};
++    lua.set_path_resolver(SafeFileResolver{m_path});
++
++    if (const auto loaded = lua.run_file(m_path); !loaded.valid()) {
++        const sol::error err = loaded;
++        throw Biz::Lua::LuaException(err.what(), m_path);
++    }
++    if (!lua.state()["describe"].is<sol::function>()) {
++        throw Biz::Lua::LuaException("Missing describe() function; rescan plugins", m_path);
++    }
++    sol::protected_function fn = lua.state()["describe"];
++    const sol::protected_function_result result = fn();
++    if (!result.valid()) {
++        const sol::error err = result;
++        throw Biz::Lua::LuaException(err.what(), m_path);
++    }
++    if (result.return_count() < 1 || result.return_count() > 2 || result.get_type() != sol::type::string) {
++        throw Biz::Lua::LuaException("describe() must return text and an optional color", m_path);
++    }
++    PluginContext context{result.get<std::string>(), std::nullopt};
++    if (result.return_count() == 2) {
++        const sol::object color = result.get<sol::object>(1);
++        if (color.get_type() == sol::type::string) context.color = color.as<std::string>();
++    }
++    return context;
++}
++
+ void Plugin::execute(Biz::Lua::LuaEngine& lua, const PluginParamValueMap& params) const
+ {
+     SafeFileResolver resolver{m_path};
+diff --git a/src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp b/src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp
+index ebbe849e62..910878ba44 100644
+--- a/src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp
++++ b/src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp
+@@ -6,12 +6,34 @@
+ #include "Slic3r/App/Yoga/LayoutButton.hpp"
+ #include "Slic3r/App/Yoga/ToggleButton.hpp"
+ #include "Slic3r/App/Yoga/Validator.hpp"
++#include "Slic3r/App/Yoga/ScrollArea.hpp"
++#include "Slic3r/App/Yoga/Rectangle.hpp"
++#include "Slic3r/Biz/Algorithms/Color.hpp"
+ #include "Slic3r/Biz/I18N/I18N.hpp"
+ 
++#include <algorithm>
++#include <utility>
++
+ namespace Slic3r::App::Lua {
+ 
+ namespace {
+ 
++// Reuse the settings widgets' tooltip, including their native hover behavior.
++template <typename Widget>
++class ParamWidget : public Widget
++{
++public:
++    template <typename... Args>
++    ParamWidget(const PluginParamDef& param, Args&&... args) :
++        Widget(std::forward<Args>(args)...)
++    {
++        if (!param.tooltip || param.tooltip->empty()) return;
++        this->set_tooltip(*param.tooltip);
++        this->m_tooltip->set_text_wrap(true);
++        this->m_tooltip->content_item()->set_width(350);
++    }
++};
++
+ class StringControl : public Details::IParamControl
+ {
+ public:
+@@ -41,7 +63,7 @@ public:
+                 m_param_def.default_value.value_or("")
+             );
+         }
+-        m_textfield = parent.emplace_back<Yoga::InputTextField>();
++        m_textfield = parent.emplace_back<ParamWidget<Yoga::InputTextField>>(m_param_def);
+         m_textfield->set_text(val);
+         return *m_textfield;
+     }
+@@ -66,7 +88,8 @@ public:
+ 
+     Yoga::Item& emplace_control(Yoga::Item& parent) override
+     {
+-        m_toggle_button = parent.emplace_back<Yoga::ToggleButton>(m_param_def.label);
++        m_toggle_button = parent.emplace_back<ParamWidget<Yoga::ToggleButton>>(
++            m_param_def);
+         bool val{false};
+         if (m_init_value.has_value()) {
+             val = std::get<bool>(m_init_value.value());
+@@ -128,7 +151,7 @@ public:
+                 m_param_def.default_value.value_or("0")
+             );
+         }
+-        m_textfield = parent.emplace_back<Yoga::InputTextField>();
++        m_textfield = parent.emplace_back<ParamWidget<Yoga::InputTextField>>(m_param_def);
+         auto validator = std::make_unique<ValidatorType>();
+ 
+         m_textfield->set_validator(std::move(validator));
+@@ -161,6 +184,8 @@ PluginDialog::show_plugin(const PluginMeta& plugin_meta, const PluginParamValueM
+     m_meta = plugin_meta;
+ 
+     m_param_controls.clear();
++    m_param_rows.clear();
++    m_result_shown = false;
+     while (!content()->items().empty()) {
+         content()->remove(content()->get_item(0));
+     }
+@@ -169,6 +194,21 @@ PluginDialog::show_plugin(const PluginMeta& plugin_meta, const PluginParamValueM
+     append_tab(plugin_meta.title.value_or(plugin_meta.id));
+ 
+     content()->set_orientation(Orientation::Vertical);
++    const int dialog_width = std::clamp(plugin_meta.dialog_width.value_or(400), 400, 1000);
++    content()->set_width(dialog_width);
++    content()->set_min_width(dialog_width);
++    m_input_page = content()->emplace_back<Item>();
++    m_input_page->set_orientation(Orientation::Vertical);
++    m_input_page->set_gap(8);
++    emplace_context(*m_input_page);
++    if (plugin_meta.description) {
++        auto* description = m_input_page->emplace_back<Text>(*plugin_meta.description);
++        description->set_wrap_mode(Text::WrapMode::Wrap);
++    }
++    m_fields = m_input_page->emplace_back<ScrollArea>();
++    m_fields->set_orientation(Orientation::Vertical);
++    m_fields->set_gap(5);
++    m_fields->set_max_height(460);
+ 
+     const float row_padding = 5.f;
+     const float row_gap = 10.f;
+@@ -190,7 +230,8 @@ PluginDialog::show_plugin(const PluginMeta& plugin_meta, const PluginParamValueM
+             PANIC("Unsupported param type");
+         }
+     }
+-    Item* buttons_row = content()->emplace_back<Item>();
++    update_visibility();
++    Item* buttons_row = m_input_page->emplace_back<Item>();
+     buttons_row->set_orientation(Orientation::Horizontal);
+     buttons_row->set_flex_grow(1.f);
+     buttons_row->set_padding(row_padding);
+@@ -203,12 +244,13 @@ PluginDialog::show_plugin(const PluginMeta& plugin_meta, const PluginParamValueM
+     ok_btn->set_content_padding(button_padding);
+     ok_btn->callbacks().action = [this]()
+     {
++        m_result_shown = false;
+         if (m_process_function) {
+             PluginParamValueMap param_values;
+             collect_values(param_values);
+             m_process_function(m_meta.value(), param_values);
+         }
+-        close_action();
++        if (!m_result_shown) close_action();
+     };
+     ok_btn->set_flex_grow(2);
+     ok_btn->set_background_color(Platform::Color::AccentPrimary);
+@@ -223,20 +265,93 @@ PluginDialog::show_plugin(const PluginMeta& plugin_meta, const PluginParamValueM
+     cancel_btn->set_flex_grow(1);
+     cancel_btn->set_min_height(button_height);
+ 
+-    content()->set_min_width(400);
++    // Keep both pages alive: switching from inside Run must not destroy its button.
++    m_result_page = content()->emplace_back<Item>();
++    m_result_page->set_orientation(Orientation::Vertical);
++    m_result_page->set_gap(10);
++    m_result_page->set_visible(false);
++    auto* result_scroll = m_result_page->emplace_back<ScrollArea>();
++    result_scroll->set_orientation(Orientation::Vertical);
++    result_scroll->set_gap(10);
++    result_scroll->set_max_height(460);
++    emplace_context(*result_scroll);
++    m_summary = result_scroll->emplace_back<Text>("");
++    m_summary->set_wrap_mode(Text::WrapMode::Wrap);
++    auto& details_row = emplace_row(*result_scroll, Biz::_u8L("Show details"));
++    auto* details_toggle = details_row.emplace_back<ToggleButton>();
++    style_control(*details_toggle);
++    m_details = result_scroll->emplace_back<Text>("");
++    m_details->set_wrap_mode(Text::WrapMode::Wrap);
++    m_details->set_visible(false);
++    details_toggle->callbacks().checked_changed = [this](bool checked)
++    { m_details->set_visible(checked); };
++    auto* result_buttons = m_result_page->emplace_back<Item>();
++    result_buttons->set_orientation(Orientation::Horizontal);
++    result_buttons->set_gap(row_gap);
++    auto* back = result_buttons->emplace_back<LayoutButton>(Biz::_u8L("Back"));
++    back->set_content_padding(button_padding);
++    back->set_min_height(button_height);
++    back->set_flex_grow(1);
++    back->callbacks().action = [this, details_toggle]()
++    {
++        details_toggle->set_checked(false);
++        m_details->set_visible(false);
++        m_result_page->set_visible(false);
++        m_input_page->set_visible(true);
++    };
++    auto* close = result_buttons->emplace_back<LayoutButton>(Biz::_u8L("Close"));
++    close->set_content_padding(button_padding);
++    close->set_min_height(button_height);
++    close->set_flex_grow(1);
++    close->callbacks().action = [this]() { close_action(); };
+ 
+     open();
+ }
+ 
++void PluginDialog::emplace_context(Yoga::Item& parent)
++{
++    using namespace Yoga;
++    if (!m_meta->context || m_meta->context->text.empty()) return;
++    const auto& context = *m_meta->context;
++    Item* label_parent = &parent;
++    Domain::ColorRGB color;
++    if (context.color && context.color->size() == 7 && context.color->front() == '#' &&
++        std::all_of(context.color->begin() + 1, context.color->end(), [](char c) {
++            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
++        }) &&
++        Biz::Algorithms::Color::decode_color(*context.color, color)) {
++        auto* row = parent.emplace_back<Item>();
++        row->set_orientation(Orientation::Horizontal);
++        row->set_gap(8);
++        auto* marker = row->emplace_back<Rectangle>();
++        marker->set_object_name("PluginContextColor");
++        marker->set_width(16);
++        marker->set_height(16);
++        marker->set_min_width(16);
++        marker->set_min_height(16);
++        marker->set_flex_shrink(0);
++        marker->set_self_align(YGAlignCenter);
++        marker->set_rounding(8);
++        marker->set_border_width(1);
++        marker->set_border_color(ImColor(160, 160, 160));
++        marker->set_fill(ImColor(color.r(), color.g(), color.b()));
++        label_parent = row;
++    }
++    auto* text = label_parent->emplace_back<Text>(context.text);
++    if (label_parent != &parent) text->set_flex_grow(1.f);
++    text->set_wrap_mode(Text::WrapMode::Wrap);
++}
++
+ void PluginDialog::emplace_string_param(
+     const PluginParamDef& param,
+     std::optional<PluginParamValue> default_value
+ )
+ {
+-    auto& row = emplace_row(param.label.c_str());
++    auto& row = emplace_row(*m_fields, param.label);
+     auto [it, _] =
+         m_param_controls.emplace(param.name, std::make_unique<StringControl>(param, default_value));
+     style_control(it->second->emplace_control(row));
++    m_param_rows[param.name] = &row;
+ }
+ 
+ void PluginDialog::emplace_float_param(
+@@ -244,13 +359,14 @@ void PluginDialog::emplace_float_param(
+     std::optional<PluginParamValue> default_value
+ )
+ {
+-    auto& row     = emplace_row(param.label.c_str());
++    auto& row     = emplace_row(*m_fields, param.label);
+     using Control = NumberControl<Yoga::DoubleValidator, double>;
+     auto [it, _]  = m_param_controls.emplace(
+         param.name,
+         std::make_unique<Control>(param, std::move(default_value))
+     );
+     style_control(it->second->emplace_control(row));
++    m_param_rows[param.name] = &row;
+ }
+ 
+ void PluginDialog::emplace_int_param(
+@@ -258,13 +374,14 @@ void PluginDialog::emplace_int_param(
+     std::optional<PluginParamValue> default_value
+ )
+ {
+-    auto& row     = emplace_row(param.label.c_str());
++    auto& row     = emplace_row(*m_fields, param.label);
+     using Control = NumberControl<Yoga::IntValidator, int>;
+     auto [it, _]  = m_param_controls.emplace(
+         param.name,
+         std::make_unique<Control>(param, std::move(default_value))
+     );
+     style_control(it->second->emplace_control(row));
++    m_param_rows[param.name] = &row;
+ }
+ 
+ void PluginDialog::emplace_bool_param(
+@@ -272,33 +389,45 @@ void PluginDialog::emplace_bool_param(
+     std::optional<PluginParamValue> default_value
+ )
+ {
+-    auto& row = emplace_row();
++    auto& row = emplace_row(*m_fields, param.label);
+     auto [it, _] = m_param_controls.emplace(
+         param.name,
+         std::make_unique<BoolControl>(param, std::move(default_value))
+     );
+-    style_control(it->second->emplace_control(row));
++    auto& control = static_cast<Yoga::ToggleButton&>(it->second->emplace_control(row));
++    style_control(control);
++    control.callbacks().checked_changed = [this](bool) { update_visibility(); };
++    m_param_rows[param.name] = &row;
+ }
+ 
+-Yoga::Item& PluginDialog::emplace_row(const char* label)
++Yoga::Item& PluginDialog::emplace_row(Yoga::Item& parent, const std::string& label)
+ {
+-    auto* row = content()->emplace_back<Yoga::Item>();
++    auto* row = parent.emplace_back<Yoga::Item>();
+     row->set_orientation(Yoga::Orientation::Horizontal);
+     row->set_flex_grow(1.f);
+     row->set_flex_shrink(0.f);
+     row->set_justify_content(YGJustifySpaceBetween);
+     row->set_align_items(YGAlignCenter);
++    row->set_gap(12);
+ 
+-    if (label) {
+-        row->emplace_back<Yoga::Text>(label)->set_flex_grow(1.f);
+-    }
++    // The same label column aligns toggles with text/numeric inputs and results.
++    const int width = std::clamp(m_meta->dialog_width.value_or(400), 400, 1000);
++    const int input_width = std::clamp(m_meta->input_width.value_or(width / 2),
++                                      100, std::min(600, width - 120));
++    auto* text = row->emplace_back<Yoga::Text>(label);
++    text->set_width(width - input_width - 32);
++    text->set_flex_shrink(0);
++    text->set_wrap_mode(Yoga::Text::WrapMode::Wrap);
+ 
+     return *row;
+ }
+ 
+ void PluginDialog::style_control(Yoga::Item& ctrl)
+ {
+-    ctrl.set_flex_grow(3);
++    // Fill the remaining column, including the space available beside a scrollbar.
++    ctrl.set_flex_grow(1);
++    ctrl.set_flex_shrink(1);
++    ctrl.set_min_height(28);
+ }
+ 
+ void PluginDialog::collect_values(PluginParamValueMap& param_values) const
+@@ -307,4 +436,30 @@ void PluginDialog::collect_values(PluginParamValueMap& param_values) const
+         param_values[k] = v->value();
+     }
+ }
+-}
+\ No newline at end of file
++
++void PluginDialog::update_visibility()
++{
++    for (const auto& param : m_meta->params) {
++        if (!param.visible_if) continue;
++        auto row = m_param_rows.find(param.name);
++        auto dependency = m_param_controls.find(*param.visible_if);
++        if (row == m_param_rows.end()) continue;
++        // An invalid dependency must not silently hide a required field.
++        bool visible = true;
++        if (dependency != m_param_controls.end()) {
++            const auto value = dependency->second->value();
++            if (const auto* checked = std::get_if<bool>(&value)) visible = *checked;
++        }
++        row->second->set_visible(visible);
++    }
++}
++
++void PluginDialog::show_result(const std::string& summary, const std::string& details)
++{
++    m_summary->set_text(summary);
++    m_details->set_text(details);
++    m_result_shown = true;
++    m_input_page->set_visible(false);
++    m_result_page->set_visible(true);
++}
++}
+diff --git a/src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp b/src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp
+index d8cd1bdaac..fe31da4c34 100644
+--- a/src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp
++++ b/src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp
+@@ -158,8 +158,22 @@ void PluginSystem::execute_plugin(const std::string& id)
+     }
+     const auto& plugin = it->second;
+     ASSERT(m_dialog.get() != nullptr);
++    auto meta = plugin.meta();
++    if (meta.has_description_callback) {
++        try {
++            ProjectApi project_api(m_project_interactor, m_font_manager);
++            Biz::Lua::LuaEngine lua;
++            lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++            PackageRegistry package_registry;
++            lua.open_registry([&package_registry](auto& engine) { package_registry.register_api(engine); });
++            meta.context = plugin.describe(lua);
++        } catch (const std::exception& e) {
++            SPDLOG_ERROR("Describing plugin {} failed\n{}", plugin.meta().id, e.what());
++            meta.context = PluginContext{Biz::_u8L("Plugin context unavailable. See the process log for details."), std::nullopt};
++        }
++    }
+     m_dialog->show_plugin(
+-        plugin.meta(),
++        meta,
+         m_last_plugin_data.has_value() && m_last_plugin_data->meta.id == id ?
+             m_last_plugin_data->param_values :
+             PluginParamValueMap{}
+@@ -174,6 +188,12 @@ void PluginSystem::finalize_run()
+     ProjectApi project_api(m_project_interactor, m_font_manager);
+     Biz::Lua::LuaEngine lua;
+     lua.open_registry([&project_api](auto& lua) { project_api.register_api(lua); });
++    lua.open_registry([this](auto& engine)
++    {
++        auto api = engine.state()["api"].template get<sol::table>();
++        api["show_result"] = [this](const std::string& summary, const std::string& details)
++        { m_dialog->show_result(summary, details); };
++    });
+     PackageRegistry package_registry;
+     lua.open_registry([&package_registry](auto& lua) { package_registry.register_api(lua); });
+ 
+diff --git a/src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp b/src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp
+index eea6803cef..4259e8d917 100644
+--- a/src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp
++++ b/src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp
+@@ -5,6 +5,8 @@
+ #include "Slic3r/Math.hpp"
+ #include "Slic3r/App/Config/ConfigItemControl.hpp"
+ #include "Slic3r/Biz/Algorithms/ModelObject.hpp"
++#include "Slic3r/Biz/Algorithms/Color.hpp"
++#include "Slic3r/Biz/ProjectSettingsInteractor.hpp"
+ #include "Slic3r/Biz/Emboss/EmbossJob.hpp"
+ #include "Slic3r/Biz/Emboss/SvgShapeProvider.hpp"
+ #include "Slic3r/Biz/Emboss/TextPresetManager.hpp"
+@@ -47,6 +49,13 @@ struct Mesh
+     }
+ };
+ 
++struct ConfigBoxRef
++{
++    Domain::ConfigBox& config;
++    Biz::Preset::PresetInteractor& preset_interactor;
++    size_t element_idx;
++};
++
+ enum class ElementType
+ {
+     Object, Volume, Instance
+@@ -100,24 +109,51 @@ struct BedInstRef
+         return config_container().selected_preset().hw_config;
+     }
+ 
+-    Domain::ConfigBox& printer_presets()
++    ConfigBoxRef printer_presets()
++    {
++        return {
++            config_container().mutable_selected_preset().printer.config_box(),
++            project_interactor.preset_interactor(),
++            0
++        };
++    }
++
++    ConfigBoxRef print_presets()
+     {
+-        return config_container().mutable_selected_preset().printer.config_box();
++        return {
++            config_container().mutable_selected_preset().print.config_box(),
++            project_interactor.preset_interactor(),
++            0
++        };
+     }
+ 
+-    Domain::ConfigBox& print_presets()
++    ConfigBoxRef tool_print_presets(size_t tool_idx)
+     {
+-        return config_container().mutable_selected_preset().print.config_box();
++        return {
++            config_container().mutable_selected_preset().tools.at(tool_idx).config_box(),
++            project_interactor.preset_interactor(),
++            tool_idx
++        };
+     }
+ 
+-    Domain::ConfigBox& tool_print_presets(size_t tool_idx)
++    ConfigBoxRef material_presets(size_t slot_idx)
+     {
+-        return config_container().mutable_selected_preset().tools.at(tool_idx).config_box();
++        return {
++            config_container().mutable_selected_preset().materials.at(slot_idx).config_box(),
++            project_interactor.preset_interactor(),
++            slot_idx
++        };
+     }
+ 
+-    Domain::ConfigBox& material_presets(size_t slot_idx)
++    sol::table material_preset_info(sol::this_state state, size_t slot_idx) const
+     {
+-        return config_container().mutable_selected_preset().materials.at(slot_idx).config_box();
++        const auto& material = config_container().selected_preset().materials.at(slot_idx);
++        // Return a copy; editing the Lua table cannot rename or select a preset.
++        auto info = sol::state_view(state).create_table_with("id", material.id, "name", material.name);
++        // Match the main material UI, including the user's project color override.
++        const auto colors = project_interactor.project_settings_interactor().get_colors(ref.config_container_id);
++        if (slot_idx < colors.size()) info["color"] = Biz::Algorithms::Color::encode_color(colors[slot_idx]);
++        return info;
+     }
+ };
+ 
+@@ -157,65 +193,82 @@ Domain::FloatOrPercentage parse_float_or_percentage(const sol::object& o)
+     return {o.as<double>()};
+ }
+ 
+-bool set_param(Domain::ConfigBox& settings, const std::string& name, const sol::object& val)
++bool set_config_value(
++    Domain::ConfigValue& value,
++    const Domain::ConfigItemDef& def,
++    const sol::object& val
++)
+ {
+-    auto it      = settings.find(name);
+-    bool success = false;
+-    if (it.item) {
+-        success = true;
+-        it.item->visit(
+-            Domain::overloaded{
+-                [&val](double& dest_val)
+-                {
+-                    dest_val = val.as<double>();
+-                },
+-                [&val](int& dest_val)
+-                {
+-                    dest_val = val.as<int>();
+-                },
+-                [&val](Domain::Percentage& dest_val)
+-                {
+-                    dest_val = parse_percentage(val);
+-                },
+-                [&val](Domain::FloatOrPercentage& dest_val)
+-                {
+-                    dest_val = parse_float_or_percentage(val);
+-                },
+-                [&val, &it](Domain::EnumWrapper& dest_val)
+-                {
+-                    std::string enum_name = val.as<std::string>();
+-                    const bool contains   = std::ranges::any_of(
+-                        dest_val.def(),
+-                        [&enum_name](const Domain::EnumValueDef& d)
+-                        { return d.str_serialized == enum_name; }
++    bool success = true;
++    value.visit(
++        Domain::overloaded{
++            [&val](double& dest_val)
++            {
++                dest_val = val.as<double>();
++            },
++            [&val](int& dest_val)
++            {
++                dest_val = val.as<int>();
++            },
++            [&val](Domain::Percentage& dest_val)
++            {
++                dest_val = parse_percentage(val);
++            },
++            [&val](Domain::FloatOrPercentage& dest_val)
++            {
++                dest_val = parse_float_or_percentage(val);
++            },
++            [&val, &def](Domain::EnumWrapper& dest_val)
++            {
++                std::string enum_name = val.as<std::string>();
++                const bool contains   = std::ranges::any_of(
++                    dest_val.def(),
++                    [&enum_name](const Domain::EnumValueDef& d)
++                    { return d.str_serialized == enum_name; }
++                );
++                if (contains) {
++                    dest_val.set_string(enum_name);
++                } else {
++                    SPDLOG_ERROR(
++                        "Unknown enum value {} for {}, allowed values are: {}",
++                        enum_name,
++                        def.name,
++                        fmt::join(
++                            dest_val.def()
++                                | std::views::transform(
++                                    [](const Domain::EnumValueDef& def) -> std::string_view
++                                    { return def.str_serialized; }
++                                ),
++                            ", "
++                        )
+                     );
+-                    if (contains) {
+-                        dest_val.set_string(enum_name);
+-                    } else {
+-                        SPDLOG_ERROR(
+-                            "Unknown enum value {} for {}, allowed values are: {}",
+-                            enum_name,
+-                            it.item->def().name,
+-                            fmt::join(
+-                                dest_val.def()
+-                                    | std::views::transform(
+-                                        [](const Domain::EnumValueDef& def) -> std::string_view
+-                                        { return def.str_serialized; }
+-                                    ),
+-                                ", "
+-                            )
+-                        );
+-                    }
+-                },
+-                [&success](auto& val)
+-                {
+-                    success = false;
+                 }
++            },
++            [&success](auto&)
++            {
++                success = false;
+             }
+-        );
+-        if (it.is_override) {
+-            settings.overrides.enable(name);
+         }
++    );
++
++    return success;
++}
++
++bool set_param(Domain::ConfigBox& settings, const std::string& name, const sol::object& val)
++{
++    auto it = settings.find(name);
++    if (!it.item) {
++        return false;
++    }
++
++    Domain::ConfigValue value = it.item->value();
++    const bool success = set_config_value(value, it.item->def(), val);
++    if (success) {
++        it.item->set(value);
++    }
++
++    if (it.is_override) {
++        settings.overrides.enable(name);
+     }
+ 
+     return success;
+@@ -636,8 +689,7 @@ using ExposedConfigValue = std::variant<
+     double,
+     std::string,
+     Domain::Vec2d,
+-    Domain::FloatOrPercentage,
+-    Domain::Percentage>;
++    Domain::FloatOrPercentage>;
+ 
+ ProjectApi::ProjectApi(
+     Biz::ProjectInteractor& project_interactor,
+@@ -699,6 +751,7 @@ void ProjectApi::register_api(Biz::Lua::LuaEngine& lua)
+     //- local ConfigBox = {}
+ 
+     //-- Retrieves a preset/configuration value by name.
++    //-- Percentage-only settings return a number in percentage points: 0.5 means 0.5%.
+     //--@param name string The config key.
+     //--@return boolean|integer|number|string|table value
+     //- function ConfigBox:value(name) end
+@@ -707,10 +760,10 @@ void ProjectApi::register_api(Biz::Lua::LuaEngine& lua)
+     //--@param name string The config key.
+     //--@param value any The value to set.
+     //- function ConfigBox:set(name, value) end
+-    state.new_usertype<Domain::ConfigBox>("ConfigBox", sol::no_constructor,
+-        "value", [](const Domain::ConfigBox& config, const std::string& name) -> ExposedConfigValue
++    state.new_usertype<ConfigBoxRef>("ConfigBox", sol::no_constructor,
++        "value", [](const ConfigBoxRef& config_ref, const std::string& name) -> ExposedConfigValue
+         {
+-            const auto it = config.find(name);
++            const auto it = config_ref.config.find(name);
+             if (!it.item) {
+                 throw Biz::Lua::LuaException(
+                     fmt::format("Invalid preset item name '{}': not found", name)
+@@ -718,6 +771,9 @@ void ProjectApi::register_api(Biz::Lua::LuaEngine& lua)
+             }
+             return it.item->visit(
+                 Domain::overloaded{
++                    [](const Domain::Percentage& item) -> ExposedConfigValue
++                    { return item.value; },
++
+                     []<typename T>(const T& item) -> ExposedConfigValue
+                     requires Domain::is_in_variant<T, ExposedConfigValue>::value
+                     { return item; },
+@@ -730,9 +786,23 @@ void ProjectApi::register_api(Biz::Lua::LuaEngine& lua)
+                 }
+             );
+         },
+-        "set", [](Domain::ConfigBox& config, const std::string& name, const sol::object& value)
++        "set", [](ConfigBoxRef& config_ref, const std::string& name, const sol::object& new_value)
+         {
+-            set_param(config, name, value);
++            const auto it = config_ref.config.find(name);
++            if (!it.item) {
++                return;
++            }
++
++            Domain::ConfigValue value = it.item->value();
++            if (!set_config_value(value, it.item->def(), new_value)) {
++                return;
++            }
++
++            config_ref.preset_interactor.set_item_value(
++                *it.item,
++                value,
++                {config_ref.element_idx}
++            );
+         }
+     );
+ 
+@@ -790,12 +860,18 @@ void ProjectApi::register_api(Biz::Lua::LuaEngine& lua)
+     //--@param slot_idx integer
+     //--@return ConfigBox
+     //- function BedInstRef:material_presets(slot_idx) end
++    //-- Returns a snapshot of the selected material preset identity.
++    //--@param slot_idx integer Zero-based material slot.
++    //--@return table info Contains id, name and optional color (#RRGGBB, current project slot color).
++    //-- Invalid slots raise an error; color is absent when unavailable.
++    //- function BedInstRef:material_preset_info(slot_idx) end
+     state.new_usertype<BedInstRef>("BedInstRef", sol::no_constructor,
+         "printer_config", &BedInstRef::printer_config,
+         "printer_presets", &BedInstRef::printer_presets,
+         "print_presets", &BedInstRef::print_presets,
+         "tool_print_presets", &BedInstRef::tool_print_presets,
+-        "material_presets", &BedInstRef::material_presets
++        "material_presets", &BedInstRef::material_presets,
++        "material_preset_info", &BedInstRef::material_preset_info
+     );
+ 
+     //--@class FontDescriptor
+diff --git a/src/slic3r-shared/src/Slic3r/Biz/OverridableConfigBoxObservableList.cpp b/src/slic3r-shared/src/Slic3r/Biz/OverridableConfigBoxObservableList.cpp
+index 40983a3f51..db51f24456 100644
+--- a/src/slic3r-shared/src/Slic3r/Biz/OverridableConfigBoxObservableList.cpp
++++ b/src/slic3r-shared/src/Slic3r/Biz/OverridableConfigBoxObservableList.cpp
+@@ -96,13 +96,21 @@ void OverridableConfigBoxObservableList::set_value(
+             [key](const Domain::ConfigItem& item) { return item.def().name == key; }
+         );
+ 
+-        if (index != all_items.cend() && index->value() != value) {
+-            m_config_box->overrides.set(std::string{key}, value);
+-
+-            invoke_listeners<IListObserver<Biz::OverrideItem>>(
+-                [override_item_index](IListObserver<Biz::OverrideItem>* l)
+-                { l->on_updated(override_item_index); }
+-            );
++        if (index != all_items.cend()) {
++            const bool value_changed = index->value() != value;
++            const bool was_enabled =
++                m_config_box->overrides.get(std::string{key}).has_value();
++            const bool observable_was_enabled = override_item_it->overriden.value_or(false);
++
++            if (value_changed || !was_enabled || !observable_was_enabled) {
++                m_config_box->overrides.set(std::string{key}, value);
++                override_item_it->overriden = true;
++
++                invoke_listeners<IListObserver<Biz::OverrideItem>>(
++                    [override_item_index](IListObserver<Biz::OverrideItem>* l)
++                    { l->on_updated(override_item_index); }
++                );
++            }
+ 
+             return;
+         }
+diff --git a/src/slic3r-shared/test/Slic3r/App/Lua/PluginDialogTests.cpp b/src/slic3r-shared/test/Slic3r/App/Lua/PluginDialogTests.cpp
+new file mode 100644
+index 0000000000..11a6004e21
+--- /dev/null
++++ b/src/slic3r-shared/test/Slic3r/App/Lua/PluginDialogTests.cpp
+@@ -0,0 +1,361 @@
++#include <catch2/catch_test_macros.hpp>
++#include <catch2/matchers/catch_matchers_floating_point.hpp>
++#include <boost/filesystem.hpp>
++#include <fstream>
++
++#include "Slic3r/App/Lua/PluginDialog.hpp"
++#include "Slic3r/App/Yoga/ImGuiFixture.hpp"
++#include "Slic3r/App/Yoga/InputTextField.hpp"
++#include "Slic3r/App/Yoga/LayoutButton.hpp"
++#include "Slic3r/App/Yoga/Validator.hpp"
++#include "Slic3r/App/Yoga/ToggleButton.hpp"
++#include "Slic3r/App/Yoga/Text.hpp"
++#include "Slic3r/App/Yoga/Rectangle.hpp"
++#include "Slic3r/Biz/Lua/LuaException.hpp"
++
++using Catch::Matchers::WithinAbs;
++
++namespace {
++
++class TestPluginDialog : public Slic3r::App::Lua::PluginDialog
++{
++public:
++    using PluginDialog::PluginDialog;
++
++    Slic3r::App::Yoga::Item* params_content() const
++    {
++        return content()->get_item(0)->get_item(0);
++    }
++
++    Slic3r::App::Yoga::Item* input_page() const { return content()->get_item(0); }
++    Slic3r::App::Yoga::Item* result_page() const { return content()->get_item(1); }
++};
++
++} // namespace
++
++TEST_CASE("Lua parameter tooltips accept plain text and ignore unsupported metadata", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r;
++    for (const auto& help : {"nil", "42", "false", "{}", "''", "'Line one\\nLine two: 50% <text>'"}) {
++        Biz::Lua::LuaEngine lua;
++        REQUIRE(lua.run_script(std::string{
++            "info={id='help',type='project.plugin',params={{name='reading',type='string',default='',tooltip="}
++            + help + "}}}; function execute() end").valid());
++        const auto plugin = App::Lua::Plugin::parse(lua, "", "help.lua");
++        REQUIRE(plugin.has_value());
++        const auto& tooltip = plugin->meta().params.at(0).tooltip;
++        if (help[0] == '\'') {
++            REQUIRE(tooltip.has_value());
++            REQUIRE(*tooltip == (std::string{help} == "''" ? "" : "Line one\nLine two: 50% <text>"));
++        } else {
++            REQUIRE_FALSE(tooltip.has_value());
++        }
++    }
++}
++
++TEST_CASE_METHOD(ImGuiFixture, "Lua tooltips use native widgets without changing parameter values", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r::App;
++    int runs = 0;
++    Lua::PluginParamValueMap values;
++    auto* dialog = root.emplace_back<TestPluginDialog>(
++        [&](const Lua::PluginMeta&, const Lua::PluginParamValueMap& params) { ++runs; values = params; });
++    Lua::PluginMeta meta{.id="tooltips", .type=Lua::PluginType::ProjectPlugin,
++        .params={
++            {.name="reading", .label="Reading", .type="string", .default_value=std::string{"39.98"}},
++            {.name="scale", .label="Scale", .type="float", .default_value=0.5},
++            {.name="count", .label="Count", .type="int", .default_value=3},
++            {.name="apply", .label="Apply", .type="bool", .default_value=false}
++        }};
++    for (const std::optional<std::string>& help : std::vector<std::optional<std::string>>{
++        "First line\n\nLong help with a literal 50% and <text>; use 39.98;40.00;39.99 as readings.",
++        std::string{}, std::nullopt}) {
++        for (auto& param : meta.params) param.tooltip = help;
++        dialog->show_plugin(meta, {});
++        for (size_t i = 0; i < meta.params.size(); ++i) {
++            auto* row = dialog->params_content()->get_item(i);
++            auto* widget = row->get_item(1);
++            Yoga::Tooltip* tooltip = nullptr;
++            for (auto* child : widget->objects()) {
++                if (auto* candidate = dynamic_cast<Yoga::Tooltip*>(child)) tooltip = candidate;
++            }
++            REQUIRE(tooltip != nullptr);
++            REQUIRE(tooltip->text() == help.value_or(""));
++            REQUIRE_FALSE(tooltip->opened());
++            if (help && !help->empty()) {
++                auto* label = dynamic_cast<Yoga::Text*>(tooltip->content_item()->get_item(0));
++                REQUIRE(label != nullptr);
++                REQUIRE(label->wrap_mode() == Yoga::Text::WrapMode::Wrap);
++                tooltip->content_item()->style_node();
++                tooltip->content_item()->resize(default_size_info);
++                YGNodeCalculateLayout(tooltip->content_item()->node(), 800, 600, YGDirectionLTR);
++                REQUIRE_THAT(tooltip->content_item()->width(), WithinAbs(350, 1));
++            }
++            if (auto* input = dynamic_cast<Yoga::InputTextField*>(widget)) {
++                input->callbacks().hovered_changed(true);
++                REQUIRE(tooltip->opened() == (help && !help->empty()));
++                input->callbacks().hovered_changed(false);
++                REQUIRE_FALSE(tooltip->opened());
++            }
++        }
++        REQUIRE(runs == 0);
++    }
++    auto* run = dynamic_cast<Yoga::LayoutButton*>(dialog->input_page()->get_item(1)->get_item(0));
++    REQUIRE(run != nullptr);
++    run->callbacks().action();
++    REQUIRE(runs == 1);
++    REQUIRE(values.size() == 4);
++    REQUIRE(std::get<std::string>(values.at("reading")) == "39.98");
++    REQUIRE(std::get<double>(values.at("scale")) == 0.5);
++    REQUIRE(std::get<int>(values.at("count")) == 3);
++    REQUIRE_FALSE(std::get<bool>(values.at("apply")));
++}
++
++TEST_CASE("Lua dialog context is recomputed without executing the plugin", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r;
++    struct TempScript
++    {
++        boost::filesystem::path path = boost::filesystem::temp_directory_path() /
++            boost::filesystem::unique_path("plugin-context-%%%%-%%%%.lua");
++        ~TempScript() { boost::filesystem::remove(path); }
++        void write(const std::string& source) { std::ofstream(path.string()) << source; }
++    } script;
++    const std::string source = R"lua(
++        info = {id="test.context", type="project.plugin"}
++        function execute() error("must not execute when opening the form") end
++        function describe() return api.name end
++    )lua";
++    script.write(source);
++    Biz::Lua::LuaEngine scan;
++    REQUIRE(scan.run_file(script.path.string()).valid());
++    auto parsed = App::Lua::Plugin::parse(scan, "", script.path.string());
++    REQUIRE(parsed.has_value());
++    REQUIRE(parsed->meta().has_description_callback);
++
++    Biz::Lua::LuaEngine lua;
++    lua.state()["api"] = lua.state().create_table_with("name", "PLA");
++    lua.set_path_resolver([](const std::string&) { return "previous resolver"; });
++    REQUIRE(parsed->describe(lua)->text == "PLA");
++    REQUIRE_FALSE(parsed->describe(lua)->color.has_value());
++    lua.state()["api"]["name"] = "PETG";
++    REQUIRE(parsed->describe(lua)->text == "PETG");
++    script.write(source + "\nfunction describe() return api.name, api.color end");
++    lua.state()["api"]["color"] = "#1234AB";
++    REQUIRE(parsed->describe(lua)->color == "#1234AB");
++    lua.state()["api"]["color"] = 123;
++    REQUIRE_FALSE(parsed->describe(lua)->color.has_value());
++    REQUIRE(lua.resolve_file("test") == "previous resolver");
++
++    SECTION("callback errors restore the resolver") {
++        script.write(source + "\nfunction describe() error('context failure') end");
++    }
++    SECTION("non-text context is rejected") {
++        script.write(source + "\nfunction describe() return {} end");
++    }
++    SECTION("top-level errors are not ignored") {
++        script.write(source + "\nerror('load failure')");
++    }
++    REQUIRE_THROWS_AS(parsed->describe(lua), Biz::Lua::LuaException);
++    REQUIRE(lua.resolve_file("test") == "previous resolver");
++}
++
++TEST_CASE("Legacy Lua plugins do not run code when opening their forms", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r;
++    Biz::Lua::LuaEngine scan;
++    REQUIRE(scan.run_script("info={id='legacy', type='project.plugin'}; function execute() end").valid());
++    auto parsed = App::Lua::Plugin::parse(scan, "", "nonexistent-legacy-plugin.lua");
++    REQUIRE(parsed.has_value());
++    REQUIRE_FALSE(parsed->meta().has_description_callback);
++    Biz::Lua::LuaEngine lua;
++    REQUIRE_FALSE(parsed->describe(lua).has_value());
++}
++
++TEST_CASE_METHOD(ImGuiFixture, "Lua dialog context is read-only and refreshed on reopening", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r::App;
++    Lua::PluginParamValueMap values;
++    auto* dialog = root.emplace_back<TestPluginDialog>(
++        [&](const Lua::PluginMeta&, const Lua::PluginParamValueMap& params) { values = params; });
++    Lua::PluginMeta meta{
++        .id="test.context", .type=Lua::PluginType::ProjectPlugin,
++        .params={{.name="reading", .label="Reading", .type="string", .default_value=std::string{}}},
++        .context=Lua::PluginContext{"Filament: PLA, slot 1", std::nullopt}
++    };
++    dialog->show_plugin(meta, {{"reading", std::string{"39.98"}}});
++    REQUIRE(dynamic_cast<Yoga::Text*>(dialog->input_page()->get_item(0))->text() == meta.context->text);
++    auto* run = dynamic_cast<Yoga::LayoutButton*>(dialog->input_page()->get_item(2)->get_item(0));
++    run->callbacks().action();
++    REQUIRE(values.size() == 1);
++    REQUIRE(std::get<std::string>(values.at("reading")) == "39.98");
++    dialog->show_result("Preview", "Details");
++    REQUIRE(dynamic_cast<Yoga::Text*>(dialog->result_page()->get_item(0)->get_item(0))->text() == meta.context->text);
++    meta.context = Lua::PluginContext{"Filament: PETG, slot 1", std::nullopt};
++    dialog->show_plugin(meta, values);
++    REQUIRE(dynamic_cast<Yoga::Text*>(dialog->input_page()->get_item(0))->text() == meta.context->text);
++    REQUIRE_FALSE(dialog->result_page()->is_self_visible());
++    auto* fields = dialog->input_page()->get_item(1);
++    REQUIRE(dynamic_cast<Yoga::InputTextField*>(fields->get_item(0)->get_item(1))->text() == "39.98");
++}
++
++TEST_CASE_METHOD(ImGuiFixture, "Lua context color is a bordered read-only marker on both pages", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r::App;
++    int runs = 0;
++    auto* dialog = root.emplace_back<TestPluginDialog>(
++        [&](const Lua::PluginMeta&, const Lua::PluginParamValueMap&) { ++runs; });
++    Lua::PluginMeta meta{.id="color", .type=Lua::PluginType::ProjectPlugin,
++        .context=Lua::PluginContext{"Filament: PLA, slot 1", "#1234AB"}};
++    dialog->show_plugin(meta, {});
++    const auto check_marker = [&](Yoga::Item* row, const ImColor& expected) {
++        auto* marker = dynamic_cast<Yoga::Rectangle*>(row->get_item(0));
++        REQUIRE(marker != nullptr);
++        REQUIRE(dynamic_cast<Yoga::LayoutButton*>(marker) == nullptr);
++        REQUIRE(marker->border_width() > 0);
++        REQUIRE_THAT(marker->fill().Value.x, WithinAbs(expected.Value.x, 1e-6));
++        REQUIRE_THAT(marker->fill().Value.y, WithinAbs(expected.Value.y, 1e-6));
++        REQUIRE_THAT(marker->fill().Value.z, WithinAbs(expected.Value.z, 1e-6));
++        auto* text = dynamic_cast<Yoga::Text*>(row->get_item(1));
++        REQUIRE(text != nullptr);
++        REQUIRE(text->text() == meta.context->text);
++        row->set_width(400);
++        row->style_node();
++        row->resize(default_size_info);
++        YGNodeCalculateLayout(row->node(), 400, 60, YGDirectionLTR);
++        REQUIRE(text->width() > 300);
++        REQUIRE(marker->width() >= 16);
++    };
++    check_marker(dialog->input_page()->get_item(0), ImColor(0x12, 0x34, 0xAB));
++    dialog->show_result("Preview", "Details");
++    check_marker(dialog->result_page()->get_item(0)->get_item(0), ImColor(0x12, 0x34, 0xAB));
++    for (const auto& [hex, expected] : std::vector<std::pair<std::string, ImColor>>{
++        {"#000000", ImColor(0,0,0)}, {"#FFFFFF", ImColor(255,255,255)}}) {
++        meta.context->color = hex;
++        dialog->show_plugin(meta, {});
++        check_marker(dialog->input_page()->get_item(0), expected);
++    }
++    for (const auto& invalid : {"#GGGGGG", "red", "", "#123", "#12345678"}) {
++        meta.context->color = invalid;
++        dialog->show_plugin(meta, {});
++        auto* text = dynamic_cast<Yoga::Text*>(dialog->input_page()->get_item(0));
++        REQUIRE(text != nullptr);
++        REQUIRE(text->text() == meta.context->text);
++    }
++    REQUIRE(runs == 0);
++}
++
++TEST_CASE_METHOD(
++    ImGuiFixture,
++    "Lua plugin numeric parameters preserve their declared types",
++    "[Lua][PluginDialog]"
++)
++{
++    using namespace Slic3r::App;
++
++    Lua::PluginParamValueMap collected_values;
++    auto* dialog = root.emplace_back<TestPluginDialog>(
++        [&collected_values](const Lua::PluginMeta&, const Lua::PluginParamValueMap& values)
++        { collected_values = values; }
++    );
++
++    Lua::PluginMeta meta{
++        .id = "test.numeric-params",
++        .type = Lua::PluginType::ProjectPlugin,
++        .title = "Numeric parameters",
++        .params = {
++            {
++                .name = "measurement",
++                .label = "Measurement",
++                .type = "float",
++                .default_value = 40.0
++            },
++            {
++                .name = "count",
++                .label = "Count",
++                .type = "int",
++                .default_value = 40
++            }
++        }
++    };
++
++    dialog->show_plugin(meta, {});
++
++    auto* float_row = dialog->params_content()->get_item(0);
++    auto* float_input = dynamic_cast<Yoga::InputTextField*>(float_row->get_item(1));
++    REQUIRE(float_input != nullptr);
++    REQUIRE(dynamic_cast<Yoga::DoubleValidator*>(float_input->validator()) != nullptr);
++    float_input->set_text("39.92");
++    REQUIRE_THAT(std::stod(float_input->text()), WithinAbs(39.92, 1e-9));
++
++    auto* int_row = dialog->params_content()->get_item(1);
++    auto* int_input = dynamic_cast<Yoga::InputTextField*>(int_row->get_item(1));
++    REQUIRE(int_input != nullptr);
++    REQUIRE(dynamic_cast<Yoga::IntValidator*>(int_input->validator()) != nullptr);
++    int_input->set_text("39.92");
++    REQUIRE(int_input->text() == "40");
++
++    auto* buttons_row = dialog->input_page()->get_item(1);
++    auto* run_button = dynamic_cast<Yoga::LayoutButton*>(buttons_row->get_item(0));
++    REQUIRE(run_button != nullptr);
++    REQUIRE(run_button->callbacks().action);
++    run_button->callbacks().action();
++
++    REQUIRE_THAT(
++        std::get<double>(collected_values.at("measurement")),
++        WithinAbs(39.92, 1e-9)
++    );
++    REQUIRE(std::get<int>(collected_values.at("count")) == 40);
++}
++
++TEST_CASE_METHOD(ImGuiFixture, "Lua dialog preserves hidden inputs and shows results without rerunning", "[Lua][PluginDialog]")
++{
++    using namespace Slic3r::App;
++    int runs = 0;
++    Lua::PluginParamValueMap values;
++    TestPluginDialog* dialog = nullptr;
++    dialog = root.emplace_back<TestPluginDialog>(
++        [&](const Lua::PluginMeta&, const Lua::PluginParamValueMap& params)
++        {
++            ++runs;
++            values = params;
++            dialog->show_result("XY shrinkage: unavailable -> 0.5000%", "Experimental estimate");
++        });
++    Lua::PluginMeta meta{
++        .id = "test.dialog-result", .type = Lua::PluginType::ProjectPlugin,
++        .params = {
++            {.name = "z", .label = "Z", .type = "bool", .default_value = false},
++            {.name = "z40", .label = "Z40 [mm]", .type = "string", .default_value = std::string{}, .visible_if = "z"}
++        },
++        .dialog_width = 760, .input_width = 360
++    };
++    dialog->show_plugin(meta, {{"z40", std::string{"39.98;40.00;39.99;40.01;40.00"}}});
++    auto* toggle = dynamic_cast<Yoga::ToggleButton*>(dialog->params_content()->get_item(0)->get_item(1));
++    auto* row = dialog->params_content()->get_item(1);
++    auto* input = dynamic_cast<Yoga::InputTextField*>(row->get_item(1));
++    REQUIRE(toggle != nullptr);
++    REQUIRE(input != nullptr);
++    REQUIRE_FALSE(row->is_self_visible());
++    toggle->set_checked(true);
++    REQUIRE(row->is_self_visible());
++    toggle->set_checked(false);
++    REQUIRE_FALSE(row->is_self_visible());
++    auto* run = dynamic_cast<Yoga::LayoutButton*>(dialog->input_page()->get_item(1)->get_item(0));
++    run->callbacks().action();
++    REQUIRE(runs == 1);
++    REQUIRE(std::get<std::string>(values.at("z40")) == input->text());
++    REQUIRE(dialog->result_page()->is_self_visible());
++    REQUIRE_FALSE(dialog->input_page()->is_self_visible());
++    auto* result_scroll = dialog->result_page()->get_item(0);
++    REQUIRE(dynamic_cast<Yoga::Text*>(result_scroll->get_item(0))->text().find("0.5000%") != std::string::npos);
++    auto* details = result_scroll->get_item(2);
++    REQUIRE_FALSE(details->is_self_visible());
++    dynamic_cast<Yoga::ToggleButton*>(result_scroll->get_item(1)->get_item(1))->set_checked(true);
++    REQUIRE(details->is_self_visible());
++    dynamic_cast<Yoga::LayoutButton*>(dialog->result_page()->get_item(1)->get_item(0))->callbacks().action();
++    REQUIRE(runs == 1);
++    REQUIRE(dialog->input_page()->is_self_visible());
++    REQUIRE_FALSE(dialog->result_page()->is_self_visible());
++    REQUIRE_FALSE(details->is_self_visible());
++    REQUIRE(input->text() == "39.98;40.00;39.99;40.01;40.00");
++}
+diff --git a/src/slic3r-shared/test/Slic3r/App/Lua/ProjectApiTests.cpp b/src/slic3r-shared/test/Slic3r/App/Lua/ProjectApiTests.cpp
+new file mode 100644
+index 0000000000..6ccd44d602
+--- /dev/null
++++ b/src/slic3r-shared/test/Slic3r/App/Lua/ProjectApiTests.cpp
+@@ -0,0 +1,379 @@
++#include <catch2/catch_test_macros.hpp>
++#include <catch2/matchers/catch_matchers_floating_point.hpp>
++
++#include <boost/filesystem.hpp>
++
++#include "Slic3r/App/Lua/ProjectApi.hpp"
++#include "Slic3r/App/Platform/StdMainThreadDispatcher.hpp"
++#include "Slic3r/Biz/Emboss/IFontManager.hpp"
++#include "Slic3r/Biz/ISlicingInputChangedListener.hpp"
++#include "Slic3r/Biz/ProjectSettingsInteractor.hpp"
++#include "Slic3r/Biz/OverridableConfigBoxObservableList.hpp"
++#include "Slic3r/Biz/Preset/IO/BundlePaths.hpp"
++#include "Slic3r/Biz/Preset/IPresetChangedListener.hpp"
++#include "Slic3r/Biz/Slicing/TestUtils.hpp"
++#include "Slic3r/TestUtils/AppInstanceMessageHandlerScope.hpp"
++#include "Slic3r/TestUtils/JobManagerScope.hpp"
++#include "Slic3r/TestUtils/TestData.hpp"
++
++using Catch::Matchers::WithinAbs;
++
++namespace {
++
++class TestFontManager : public Slic3r::Biz::Emboss::IFontManager
++{
++public:
++    TestFontManager()
++    {
++        m_fonts.emplace_back();
++        m_fonts.back().name = "Test font";
++    }
++
++    const Slic3r::Domain::FontList& get_fonts() override
++    {
++        return m_fonts;
++    }
++
++    std::unique_ptr<const Slic3r::Domain::FontFile> open(
++        const Slic3r::Domain::FontDescriptor&
++    ) override
++    {
++        auto data = std::make_unique<std::vector<unsigned char>>();
++        data->push_back(0);
++        return std::make_unique<const Slic3r::Domain::FontFile>(
++            std::move(data),
++            std::vector<Slic3r::Domain::FontFile::Info>{}
++        );
++    }
++
++    Descriptor get_current_descriptor(
++        const Slic3r::Domain::FontDescriptor& descriptor
++    ) override
++    {
++        return descriptor;
++    }
++
++    Slic3r::Domain::FontDescriptor::Type get_current_type() const override
++    {
++        return Slic3r::Domain::FontDescriptor::Type::undefined;
++    }
++
++    Slic3r::Domain::FontList create_favorit() override
++    {
++        return m_fonts;
++    }
++
++private:
++    Slic3r::Domain::FontList m_fonts;
++};
++
++class ConfigChangeRecorder :
++    public Slic3r::Biz::Preset::IPresetChangedListener,
++    public Slic3r::Biz::ISlicingInputChangedListener
++{
++public:
++    void on_preset_value_changed(
++        Slic3r::Domain::SelectionId,
++        Slic3r::Domain::SelectionId,
++        const Slic3r::Domain::ConfigItem& item
++    ) override
++    {
++        changed_items.push_back(item.name());
++    }
++
++    void on_slicing_input_changed(const Slic3r::Domain::BedRef&) override
++    {
++        ++slicing_input_change_count;
++    }
++
++    void on_slicing_input_removed(const Slic3r::Domain::BedRef&) override {}
++
++    std::vector<std::string> changed_items;
++    size_t slicing_input_change_count{0};
++};
++
++struct LuaProjectApiFixture
++{
++    Slic3r::Domain::Workbench workbench;
++    Slic3r::App::Platform::StdMainThreadDispatcher main_thread_dispatcher;
++    Tests::AppInstanceMessageHandlerScope app_instance_message_handler_scope{
++        main_thread_dispatcher
++    };
++    Tests::JobManagerScope job_manager_scope{main_thread_dispatcher};
++    Slic3r::Test::MockThumbnailImageGenerator thumbnail_image_generator;
++    Slic3r::Biz::ProjectInteractor project_interactor{
++        workbench,
++        main_thread_dispatcher,
++        thumbnail_image_generator
++    };
++    TestFontManager font_manager;
++    const Slic3r::Biz::Preset::IO::BundlePaths bundle_paths{
++        Slic3r::Biz::Preset::IO::BundlePaths::make_test_runtime(Tests::get_datadir())
++    };
++    ConfigChangeRecorder config_change_recorder;
++
++    LuaProjectApiFixture()
++    {
++        auto& preset_interactor = project_interactor.preset_interactor();
++        preset_interactor.set_use_hw_config_short_name(false);
++        preset_interactor.load_preset_bundle(bundle_paths);
++        project_interactor.new_project();
++        preset_interactor.add_listener<Slic3r::Biz::Preset::IPresetChangedListener>(
++            &config_change_recorder
++        );
++        preset_interactor.add_listener<Slic3r::Biz::ISlicingInputChangedListener>(
++            &config_change_recorder
++        );
++    }
++
++    ~LuaProjectApiFixture()
++    {
++        auto& preset_interactor = project_interactor.preset_interactor();
++        preset_interactor.remove_listener<Slic3r::Biz::Preset::IPresetChangedListener>(
++            &config_change_recorder
++        );
++        preset_interactor.remove_listener<Slic3r::Biz::ISlicingInputChangedListener>(
++            &config_change_recorder
++        );
++        main_thread_dispatcher.close();
++        boost::filesystem::remove_all(bundle_paths.user_bundle_path);
++    }
++};
++
++} // namespace
++
++TEST_CASE_METHOD(LuaProjectApiFixture, "Lua material identity follows the selected preset and returns a copy", "[Lua][ProjectApi]")
++{
++    using namespace Slic3r;
++    App::Lua::ProjectApi project_api(project_interactor, font_manager);
++    Biz::Lua::LuaEngine lua;
++    lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++    const auto initial = project_interactor.selected_config_container().selected_preset().metadata();
++    REQUIRE(lua.run_script(R"lua(
++        bed = api.project:current_bed()
++        original = bed:material_preset_info(0)
++        original_id, original_name = original.id, original.name
++        original.name = "changed in Lua only"
++        invalid_slot_ok = pcall(function() bed:material_preset_info(9999) end)
++    )lua").valid());
++    REQUIRE(lua.state()["original_id"].get<std::string>() == initial.materials.at(0).id);
++    REQUIRE(lua.state()["original_name"].get<std::string>() == initial.materials.at(0).name);
++    REQUIRE_FALSE(lua.state()["invalid_slot_ok"].get<bool>());
++    REQUIRE(project_interactor.selected_config_container().selected_preset().materials.at(0).name == initial.materials.at(0).name);
++    REQUIRE(config_change_recorder.changed_items.empty());
++    REQUIRE(config_change_recorder.slicing_input_change_count == 0);
++
++    // The minimal fixture has one preset. Supply a second material identity
++    // and change the selected slot to check lookup freshness and slot indexing.
++    const std::string next_id = "test.other-material";
++    const std::string next_name = "Custom PETG";
++    auto& selected = project_interactor.selected_config_container().mutable_selected_preset();
++    auto other = selected.materials.at(0);
++    other.id = next_id;
++    other.name = next_name;
++    selected.materials.push_back(other);
++    REQUIRE(lua.run_script("second = bed:material_preset_info(1)").valid());
++    REQUIRE(lua.state()["second"]["name"].get<std::string>() == next_name);
++    selected.materials.at(0) = other;
++    REQUIRE(lua.run_script("current = bed:material_preset_info(0)").valid());
++    REQUIRE(lua.state()["current"]["id"].get<std::string>() == next_id);
++    REQUIRE(lua.state()["current"]["name"].get<std::string>() == next_name);
++    REQUIRE(lua.state()["original"]["id"].get<std::string>() == initial.materials.at(0).id);
++}
++
++TEST_CASE_METHOD(LuaProjectApiFixture, "Lua material color matches project slot overrides without changing the preset", "[Lua][ProjectApi]")
++{
++    using namespace Slic3r;
++    App::Lua::ProjectApi project_api(project_interactor, font_manager);
++    Biz::Lua::LuaEngine lua;
++    lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++    REQUIRE(lua.run_script(R"lua(
++        bed = api.project:current_bed()
++        original_preset_color = bed:material_presets(0):value("filament_colour")
++        original = bed:material_preset_info(0)
++    )lua").valid());
++    auto& settings = project_interactor.project_settings_interactor();
++    const auto container_id = project_interactor.selected_config_container_id();
++    for (const auto& color : {"#1234AB", "#000000", "#FFFFFF"}) {
++        settings.set_color_from_user(container_id, 0, color);
++        REQUIRE(lua.run_script(R"lua(
++            current = bed:material_preset_info(0)
++            preset_color = bed:material_presets(0):value("filament_colour")
++        )lua").valid());
++        REQUIRE(lua.state()["current"]["color"].get<std::string>() == color);
++        REQUIRE(lua.state()["preset_color"].get<std::string>() == lua.state()["original_preset_color"].get<std::string>());
++        REQUIRE(lua.state()["current"]["id"].get<std::string>() == lua.state()["original"]["id"].get<std::string>());
++    }
++    REQUIRE(lua.run_script(R"lua(
++        current.color = "#000000"
++        assert(bed:material_preset_info(0).color == "#FFFFFF")
++    )lua").valid());
++    REQUIRE(config_change_recorder.changed_items.empty());
++}
++
++TEST_CASE_METHOD(
++    LuaProjectApiFixture,
++    "Lua preset setters apply values and notify project listeners",
++    "[Lua][ProjectApi]"
++)
++{
++    Slic3r::App::Lua::ProjectApi project_api(project_interactor, font_manager);
++    Slic3r::Biz::Lua::LuaEngine lua;
++    lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++
++    const auto result = lua.run_script(R"lua(
++        local bed = api.project:current_bed()
++        local material = bed:material_presets(0)
++        local print = bed:print_presets()
++        material:value("filament_shrinkage_compensation_xy")
++        print:value("xy_size_compensation")
++        material:set("filament_shrinkage_compensation_xy", "1.250000%")
++        print:set("xy_size_compensation", -0.08)
++    )lua");
++    if (!result.valid()) {
++        const sol::error error = result;
++        INFO(error.what());
++    }
++    REQUIRE(result.valid());
++
++    const auto& selected_preset =
++        project_interactor.selected_config_container().selected_preset();
++
++    const auto shrinkage = selected_preset.materials.at(0).config_box().find(
++        "filament_shrinkage_compensation_xy"
++    );
++    REQUIRE(shrinkage.item != nullptr);
++    const auto shrinkage_value = shrinkage.item->get<Slic3r::Domain::Percentage>();
++    REQUIRE_THAT(shrinkage_value.value, WithinAbs(1.25, 1e-9));
++
++    const auto xy_compensation = selected_preset.print.config_box().find(
++        "xy_size_compensation"
++    );
++    REQUIRE(xy_compensation.item != nullptr);
++    REQUIRE_THAT(xy_compensation.item->get<double>(), WithinAbs(-0.08, 1e-9));
++
++    REQUIRE(config_change_recorder.changed_items == std::vector<std::string>{
++        "filament_shrinkage_compensation_xy",
++        "xy_size_compensation"
++    });
++    REQUIRE(config_change_recorder.slicing_input_change_count == 2);
++}
++
++TEST_CASE_METHOD(
++    LuaProjectApiFixture,
++    "Lua percentage settings expose numeric percentage points before and after writes",
++    "[Lua][ProjectApi][Percentage]"
++)
++{
++    Slic3r::App::Lua::ProjectApi project_api(project_interactor, font_manager);
++    Slic3r::Biz::Lua::LuaEngine lua;
++    lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++
++    const auto initial_result = lua.run_script(R"lua(
++        local material = api.project:current_bed():material_presets(0)
++        assert(type(material:value("filament_shrinkage_compensation_xy")) == "number")
++        assert(type(material:value("filament_shrinkage_compensation_z")) == "number")
++        assert(type(api.project:current_bed():print_presets():value("xy_size_compensation")) == "number")
++    )lua");
++    if (!initial_result.valid()) {
++        const sol::error error = initial_result;
++        INFO(error.what());
++    }
++    REQUIRE(initial_result.valid());
++    REQUIRE(config_change_recorder.changed_items.empty());
++    REQUIRE(config_change_recorder.slicing_input_change_count == 0);
++
++    for (const double expected : {0.5, -0.125, 10.0, -10.0, 0.0}) {
++        INFO("Percentage points: " << expected);
++        lua.state()["expected"] = expected;
++        const auto result = lua.run_script(R"lua(
++            local material = api.project:current_bed():material_presets(0)
++            for _, key in ipairs({"filament_shrinkage_compensation_xy", "filament_shrinkage_compensation_z"}) do
++                material:set(key, expected)
++                local retained = material:value(key)
++                local fresh = api.project:current_bed():material_presets(0):value(key)
++                assert(type(retained) == "number" and type(fresh) == "number")
++                assert(math.abs(retained - expected) < 1e-9)
++                assert(math.abs(fresh - expected) < 1e-9)
++            end
++        )lua");
++        if (!result.valid()) {
++            const sol::error error = result;
++            INFO(error.what());
++        }
++        REQUIRE(result.valid());
++
++        // Check native units independently of the Lua getter/setter round trip.
++        const auto& config = project_interactor.selected_config_container()
++            .selected_preset().materials.at(0).config_box();
++        for (const auto* key : {"filament_shrinkage_compensation_xy", "filament_shrinkage_compensation_z"}) {
++            const auto item = config.find(key);
++            REQUIRE(item.item != nullptr);
++            REQUIRE_THAT(item.item->get<Slic3r::Domain::Percentage>().value,
++                         WithinAbs(expected, 1e-9));
++        }
++    }
++}
++
++TEST_CASE_METHOD(
++    LuaProjectApiFixture,
++    "Lua preset setters enable material overrides with unchanged stored values",
++    "[Lua][ProjectApi]"
++)
++{
++    const auto& initial_material_config =
++        project_interactor.selected_config_container()
++            .selected_preset()
++            .materials.at(0)
++            .config_box();
++    REQUIRE_FALSE(initial_material_config.overrides.get("retract_length").has_value());
++
++    const auto* stored_override = initial_material_config.overrides.find("retract_length");
++    REQUIRE(stored_override != nullptr);
++    REQUIRE_THAT(stored_override->get<double>(), WithinAbs(2.0, 1e-9));
++
++    const auto observable_material_config =
++        project_interactor.preset_interactor()
++            .material_cbi_list()
++            .at(0)
++            .config_box_overridable_list()
++            .lock();
++    REQUIRE(observable_material_config != nullptr);
++    const auto [initial_observable_value, initial_observable_override_enabled] =
++        observable_material_config->find("retract_length");
++    REQUIRE(initial_observable_value != nullptr);
++    REQUIRE(initial_observable_override_enabled.has_value());
++    REQUIRE_FALSE(*initial_observable_override_enabled);
++
++    Slic3r::App::Lua::ProjectApi project_api(project_interactor, font_manager);
++    Slic3r::Biz::Lua::LuaEngine lua;
++    lua.open_registry([&project_api](auto& engine) { project_api.register_api(engine); });
++
++    const auto result = lua.run_script(R"lua(
++        local material = api.project:current_bed():material_presets(0)
++        material:set("retract_length", 2.0)
++    )lua");
++    if (!result.valid()) {
++        const sol::error error = result;
++        INFO(error.what());
++    }
++    REQUIRE(result.valid());
++
++    const auto& material_config =
++        project_interactor.selected_config_container()
++            .selected_preset()
++            .materials.at(0)
++            .config_box();
++    const auto retract_length = material_config.overrides.get("retract_length");
++    REQUIRE(retract_length.has_value());
++    REQUIRE_THAT(retract_length->get<double>(), WithinAbs(2.0, 1e-9));
++
++    const auto [observable_value, observable_override_enabled] =
++        observable_material_config->find("retract_length");
++    REQUIRE(observable_value != nullptr);
++    REQUIRE(observable_override_enabled.has_value());
++    REQUIRE(*observable_override_enabled);
++
++    REQUIRE(config_change_recorder.changed_items == std::vector<std::string>{"retract_length"});
++    REQUIRE(config_change_recorder.slicing_input_change_count == 1);
++}

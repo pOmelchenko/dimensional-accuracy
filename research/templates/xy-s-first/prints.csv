@@ -1,0 +1,3 @@
+phase,print_id,artifact_id,artifact_revision,mesh_sha256,project_sha256,gcode_sha256,xy_shrinkage_percent,xy_size_compensation_mm,z_shrinkage_percent,material_slot,notes
+baseline,XY-S-FIRST-baseline,DA-XY-S,1,cb5eb1e5b367e4d430d01884f99ef0856b8bfe60ee0c2da52d829a0556489d01,,,0,0,0,1,
+verification,XY-S-FIRST-verification,DA-XY-S,1,cb5eb1e5b367e4d430d01884f99ef0856b8bfe60ee0c2da52d829a0556489d01,,,,0,0,1,

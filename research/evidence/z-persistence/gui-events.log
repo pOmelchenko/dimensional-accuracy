@@ -1,0 +1,16 @@
+z-persistence.log:1: [2026-09-06 03:47:00.607] [info] [SingleInstanceCheckerLock.cpp:74] is_another_running
+z-persistence.log:2: [2026-09-06 03:47:00.607] [info] [SingleInstanceCheckerLock.cpp:99] Lockfile created at /home/omelchenko/prusaslicer-alpha/z-persistence-config-final/cache14181848522819042935.lock
+z-persistence.log:156: [2026-09-06 03:48:39.452] [info] [PrintObjectSlice.cpp:882] Slicing volumes...  Resident memory: 1,190MB; Shared memory: 172MB; Private memory: 1,017MB; Peak memory usage: 1,230MB
+z-persistence.log:168: [2026-09-06 03:48:39.762] [info] [GCode.cpp:717] Exporting G-code...  Resident memory: 1,282MB; Shared memory: 174MB; Private memory: 1,108MB; Peak memory usage: 1,280MB
+z-persistence.log:190: [2026-09-06 03:55:34.033] [info] [PrintObjectSlice.cpp:882] Slicing volumes...  Resident memory: 1,335MB; Shared memory: 64MB; Private memory: 1,271MB; Peak memory usage: 1,448MB
+z-persistence.log:202: [2026-09-06 03:55:34.416] [info] [GCode.cpp:717] Exporting G-code...  Resident memory: 1,325MB; Shared memory: 68MB; Private memory: 1,256MB; Peak memory usage: 1,448MB
+z-persistence.log:305: [2026-09-06 10:08:58.123] [info] [SingleInstanceCheckerLock.cpp:54] ~SingleInstanceCheckerLock
+z-persistence.log:306: [2026-09-06 10:08:58.123] [info] [SingleInstanceCheckerLock.cpp:57] Removing lockfile /home/omelchenko/prusaslicer-alpha/z-persistence-config-final/cache14181848522819042935.lock
+z-persistence-preset.log:1: [2026-09-06 10:09:14.189] [info] [SingleInstanceCheckerLock.cpp:74] is_another_running
+z-persistence-preset.log:2: [2026-09-06 10:09:14.189] [info] [SingleInstanceCheckerLock.cpp:99] Lockfile created at /home/omelchenko/prusaslicer-alpha/z-persistence-preset-config/cache14181848522819042935.lock
+z-persistence-preset.log:188: [2026-09-06 10:13:36.737] [info] [SingleInstanceCheckerLock.cpp:54] ~SingleInstanceCheckerLock
+z-persistence-preset.log:189: [2026-09-06 10:13:36.737] [info] [SingleInstanceCheckerLock.cpp:57] Removing lockfile /home/omelchenko/prusaslicer-alpha/z-persistence-preset-config/cache14181848522819042935.lock
+z-persistence-project.log:1: [2026-09-06 10:13:40.623] [info] [SingleInstanceCheckerLock.cpp:74] is_another_running
+z-persistence-project.log:2: [2026-09-06 10:13:40.623] [info] [SingleInstanceCheckerLock.cpp:99] Lockfile created at /home/omelchenko/prusaslicer-alpha/z-persistence-project-config/cache14181848522819042935.lock
+z-persistence-project.log:189: [2026-09-06 10:16:40.694] [info] [SingleInstanceCheckerLock.cpp:54] ~SingleInstanceCheckerLock
+z-persistence-project.log:190: [2026-09-06 10:16:40.694] [info] [SingleInstanceCheckerLock.cpp:57] Removing lockfile /home/omelchenko/prusaslicer-alpha/z-persistence-project-config/cache14181848522819042935.lock

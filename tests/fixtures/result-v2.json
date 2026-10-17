@@ -1,0 +1,500 @@
+{
+  "apply_status": "NOT_REQUESTED",
+  "artifact_identity_source": "expected_selected_gauge; match the physical print label",
+  "artifacts": {
+    "xy": {
+      "id": "DA-XY-A",
+      "revision": 1
+    },
+    "z": {
+      "id": "DA-Z-B",
+      "revision": 1
+    }
+  },
+  "baseline": {
+    "xy_shrinkage": {
+      "known": true,
+      "numeric": 0,
+      "raw": "0"
+    },
+    "xy_size": {
+      "known": true,
+      "numeric": 0,
+      "raw": "0"
+    },
+    "z_shrinkage": {
+      "known": true,
+      "numeric": 0,
+      "raw": "0"
+    }
+  },
+  "inputs": {
+    "apply_contour_offset": false,
+    "apply_uniform_scale": false,
+    "apply_z_shrinkage": false,
+    "calibrate_xy": true,
+    "calibrate_z": true,
+    "caliper_id": "C1",
+    "confirm_apply_capable_host": false,
+    "confirm_zero_compensation": false,
+    "filament": "synthetic PLA",
+    "mpe_mm": "0.02",
+    "operator_id": "O1",
+    "preset_ids": "synthetic printer / print / filament",
+    "printer_nozzle": "synthetic 0.4",
+    "resolution_mm": "0.01",
+    "session_id": "SYNTHETIC \"fixture\"\nпроверка",
+    "slicer_version": "synthetic host",
+    "x120": "119.990;120.000;120.010",
+    "x40": "40.190;40.200;40.210",
+    "x80": "80.090;80.100;80.110",
+    "y120": "119.990;120.000;120.010",
+    "y40": "40.190;40.200;40.210",
+    "y80": "80.090;80.100;80.110",
+    "z120": "119.870;119.880;119.890",
+    "z40": "40.030;40.040;40.050",
+    "z80": "79.950;79.960;79.970"
+  },
+  "metadata": {
+    "caliper_id": "C1",
+    "filament": "synthetic PLA",
+    "missing": [],
+    "mpe_mm": 0.02,
+    "operator_id": "O1",
+    "preset_ids": "synthetic printer / print / filament",
+    "printer_nozzle": "synthetic 0.4",
+    "resolution_mm": 0.01,
+    "session_id": "SYNTHETIC \"fixture\"\nпроверка",
+    "slicer_version": "synthetic host",
+    "source": "operator_entered"
+  },
+  "plan": {
+    "xy": {
+      "anisotropy_percent": 0,
+      "contour_status": "DIAGNOSTIC_ONLY",
+      "shrinkage_percent": 0.24999999999999467,
+      "x": {
+        "contour_compensation": -0.15037593984962264,
+        "correction_scale": 1.0025062656641603,
+        "intercept": 0.29999999999999716,
+        "max_residual": 1.4210854715202004e-14,
+        "measurements": [
+          {
+            "aggregation": "median",
+            "feature_id": "x40",
+            "mad_mm": 0.00999999999999801,
+            "max_mm": 40.21,
+            "mean_mm": 40.199999999999996,
+            "median_mm": 40.2,
+            "min_mm": 40.19,
+            "n": 3,
+            "nominal_mm": 40,
+            "range_mm": 0.020000000000003126,
+            "raw_input": "40.190;40.200;40.210",
+            "raw_tokens": [
+              "40.190",
+              "40.200",
+              "40.210"
+            ],
+            "sample_sd_mm": 0.010000000000001563,
+            "values_mm": [
+              40.19,
+              40.2,
+              40.21
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "x80",
+            "mad_mm": 0.009999999999990905,
+            "max_mm": 80.11,
+            "mean_mm": 80.10000000000001,
+            "median_mm": 80.1,
+            "min_mm": 80.09,
+            "n": 3,
+            "nominal_mm": 80,
+            "range_mm": 0.01999999999999602,
+            "raw_input": "80.090;80.100;80.110",
+            "raw_tokens": [
+              "80.090",
+              "80.100",
+              "80.110"
+            ],
+            "sample_sd_mm": 0.00999999999999801,
+            "values_mm": [
+              80.09,
+              80.1,
+              80.11
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "x120",
+            "mad_mm": 0.010000000000005116,
+            "max_mm": 120.01,
+            "mean_mm": 120,
+            "median_mm": 120,
+            "min_mm": 119.99,
+            "n": 3,
+            "nominal_mm": 120,
+            "range_mm": 0.020000000000010232,
+            "raw_input": "119.990;120.000;120.010",
+            "raw_tokens": [
+              "119.990",
+              "120.000",
+              "120.010"
+            ],
+            "sample_sd_mm": 0.010000000000005116,
+            "values_mm": [
+              119.99,
+              120,
+              120.01
+            ]
+          }
+        ],
+        "models": {
+          "M0": {
+            "descriptive_shrinkage_percent": -0.07142857142856673,
+            "max_residual_mm": 0.17142857142857792,
+            "observed_additive_term_mm": 0,
+            "parameters": 1,
+            "residual_degrees_of_freedom": 2,
+            "residuals_mm": [
+              0.17142857142857792,
+              0.04285714285714448,
+              -0.08571428571427475
+            ],
+            "rms_mm": 0.11338934190276889,
+            "slope": 1.0007142857142857,
+            "sse_mm2": 0.03857142857142906
+          },
+          "M1": {
+            "descriptive_shrinkage_percent": 0.24999999999999467,
+            "max_residual_mm": 1.4210854715202004e-14,
+            "observed_additive_term_mm": 0.29999999999999716,
+            "parameters": 2,
+            "residual_degrees_of_freedom": 1,
+            "residuals_mm": [
+              0,
+              -1.4210854715202004e-14,
+              0
+            ],
+            "rms_mm": 8.204640795236539e-15,
+            "slope": 0.9975,
+            "sse_mm2": 2.0194839173657902e-28
+          },
+          "contour_correction_status": "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE",
+          "curvature_hint_mm": 0,
+          "descriptive_proposal_model": "M1_LEGACY",
+          "maximum_repeat_range_mm": 0.020000000000010232,
+          "reason": "M1 has only one residual degree of freedom. Smaller RMS does not establish a physical cause or a better correction; independent prints and a correction trial are required.",
+          "rms_reduction_mm": 0.11338934190276069,
+          "selection_status": "NOT_ESTABLISHED",
+          "slope_difference": -0.003214285714285614,
+          "uncertainty_status": "NOT_ESTIMATED"
+        },
+        "rms": 8.204640795236539e-15,
+        "slope": 0.9975
+      },
+      "xy_size_compensation": -0.15037593984962264,
+      "y": {
+        "contour_compensation": -0.15037593984962264,
+        "correction_scale": 1.0025062656641603,
+        "intercept": 0.29999999999999716,
+        "max_residual": 1.4210854715202004e-14,
+        "measurements": [
+          {
+            "aggregation": "median",
+            "feature_id": "y40",
+            "mad_mm": 0.00999999999999801,
+            "max_mm": 40.21,
+            "mean_mm": 40.199999999999996,
+            "median_mm": 40.2,
+            "min_mm": 40.19,
+            "n": 3,
+            "nominal_mm": 40,
+            "range_mm": 0.020000000000003126,
+            "raw_input": "40.190;40.200;40.210",
+            "raw_tokens": [
+              "40.190",
+              "40.200",
+              "40.210"
+            ],
+            "sample_sd_mm": 0.010000000000001563,
+            "values_mm": [
+              40.19,
+              40.2,
+              40.21
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "y80",
+            "mad_mm": 0.009999999999990905,
+            "max_mm": 80.11,
+            "mean_mm": 80.10000000000001,
+            "median_mm": 80.1,
+            "min_mm": 80.09,
+            "n": 3,
+            "nominal_mm": 80,
+            "range_mm": 0.01999999999999602,
+            "raw_input": "80.090;80.100;80.110",
+            "raw_tokens": [
+              "80.090",
+              "80.100",
+              "80.110"
+            ],
+            "sample_sd_mm": 0.00999999999999801,
+            "values_mm": [
+              80.09,
+              80.1,
+              80.11
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "y120",
+            "mad_mm": 0.010000000000005116,
+            "max_mm": 120.01,
+            "mean_mm": 120,
+            "median_mm": 120,
+            "min_mm": 119.99,
+            "n": 3,
+            "nominal_mm": 120,
+            "range_mm": 0.020000000000010232,
+            "raw_input": "119.990;120.000;120.010",
+            "raw_tokens": [
+              "119.990",
+              "120.000",
+              "120.010"
+            ],
+            "sample_sd_mm": 0.010000000000005116,
+            "values_mm": [
+              119.99,
+              120,
+              120.01
+            ]
+          }
+        ],
+        "models": {
+          "M0": {
+            "descriptive_shrinkage_percent": -0.07142857142856673,
+            "max_residual_mm": 0.17142857142857792,
+            "observed_additive_term_mm": 0,
+            "parameters": 1,
+            "residual_degrees_of_freedom": 2,
+            "residuals_mm": [
+              0.17142857142857792,
+              0.04285714285714448,
+              -0.08571428571427475
+            ],
+            "rms_mm": 0.11338934190276889,
+            "slope": 1.0007142857142857,
+            "sse_mm2": 0.03857142857142906
+          },
+          "M1": {
+            "descriptive_shrinkage_percent": 0.24999999999999467,
+            "max_residual_mm": 1.4210854715202004e-14,
+            "observed_additive_term_mm": 0.29999999999999716,
+            "parameters": 2,
+            "residual_degrees_of_freedom": 1,
+            "residuals_mm": [
+              0,
+              -1.4210854715202004e-14,
+              0
+            ],
+            "rms_mm": 8.204640795236539e-15,
+            "slope": 0.9975,
+            "sse_mm2": 2.0194839173657902e-28
+          },
+          "contour_correction_status": "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE",
+          "curvature_hint_mm": 0,
+          "descriptive_proposal_model": "M1_LEGACY",
+          "maximum_repeat_range_mm": 0.020000000000010232,
+          "reason": "M1 has only one residual degree of freedom. Smaller RMS does not establish a physical cause or a better correction; independent prints and a correction trial are required.",
+          "rms_reduction_mm": 0.11338934190276069,
+          "selection_status": "NOT_ESTABLISHED",
+          "slope_difference": -0.003214285714285614,
+          "uncertainty_status": "NOT_ESTIMATED"
+        },
+        "rms": 8.204640795236539e-15,
+        "slope": 0.9975
+      }
+    },
+    "z": {
+      "fit": {
+        "contour_compensation": -0.060120240480957085,
+        "correction_scale": 1.002004008016032,
+        "intercept": 0.11999999999999034,
+        "max_residual": 7.105427357601002e-15,
+        "measurements": [
+          {
+            "aggregation": "median",
+            "feature_id": "z40",
+            "mad_mm": 0.00999999999999801,
+            "max_mm": 40.05,
+            "mean_mm": 40.04,
+            "median_mm": 40.04,
+            "min_mm": 40.03,
+            "n": 3,
+            "nominal_mm": 40,
+            "range_mm": 0.01999999999999602,
+            "raw_input": "40.030;40.040;40.050",
+            "raw_tokens": [
+              "40.030",
+              "40.040",
+              "40.050"
+            ],
+            "sample_sd_mm": 0.00999999999999801,
+            "values_mm": [
+              40.03,
+              40.04,
+              40.05
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "z80",
+            "mad_mm": 0.009999999999990905,
+            "max_mm": 79.97,
+            "mean_mm": 79.96,
+            "median_mm": 79.96,
+            "min_mm": 79.95,
+            "n": 3,
+            "nominal_mm": 80,
+            "range_mm": 0.01999999999999602,
+            "raw_input": "79.950;79.960;79.970",
+            "raw_tokens": [
+              "79.950",
+              "79.960",
+              "79.970"
+            ],
+            "sample_sd_mm": 0.00999999999999801,
+            "values_mm": [
+              79.95,
+              79.96,
+              79.97
+            ]
+          },
+          {
+            "aggregation": "median",
+            "feature_id": "z120",
+            "mad_mm": 0.009999999999990905,
+            "max_mm": 119.89,
+            "mean_mm": 119.88,
+            "median_mm": 119.88,
+            "min_mm": 119.87,
+            "n": 3,
+            "nominal_mm": 120,
+            "range_mm": 0.01999999999999602,
+            "raw_input": "119.870;119.880;119.890",
+            "raw_tokens": [
+              "119.870",
+              "119.880",
+              "119.890"
+            ],
+            "sample_sd_mm": 0.00999999999999801,
+            "values_mm": [
+              119.87,
+              119.88,
+              119.89
+            ]
+          }
+        ],
+        "models": {
+          "M0": {
+            "descriptive_shrinkage_percent": 0.07142857142856673,
+            "max_residual_mm": 0.06857142857142406,
+            "observed_additive_term_mm": 0,
+            "parameters": 1,
+            "residual_degrees_of_freedom": 2,
+            "residuals_mm": [
+              0.06857142857142406,
+              0.01714285714284358,
+              -0.034285714285729796
+            ],
+            "rms_mm": 0.0453557367611072,
+            "slope": 0.9992857142857143,
+            "sse_mm2": 0.006171428571428552
+          },
+          "M1": {
+            "descriptive_shrinkage_percent": 0.20000000000000018,
+            "max_residual_mm": 7.105427357601002e-15,
+            "observed_additive_term_mm": 0.11999999999999034,
+            "parameters": 2,
+            "residual_degrees_of_freedom": 1,
+            "residuals_mm": [
+              7.105427357601002e-15,
+              0,
+              0
+            ],
+            "rms_mm": 4.1023203976182695e-15,
+            "slope": 0.998,
+            "sse_mm2": 5.048709793414476e-29
+          },
+          "contour_correction_status": "NOT_SUPPORTED_BY_OUTER_SPANS_ALONE",
+          "curvature_hint_mm": 0,
+          "descriptive_proposal_model": "M1_LEGACY",
+          "maximum_repeat_range_mm": 0.01999999999999602,
+          "reason": "M1 has only one residual degree of freedom. Smaller RMS does not establish a physical cause or a better correction; independent prints and a correction trial are required.",
+          "rms_reduction_mm": 0.0453557367611031,
+          "selection_status": "NOT_ESTABLISHED",
+          "slope_difference": -0.0012857142857143344,
+          "uncertainty_status": "NOT_ESTIMATED"
+        },
+        "rms": 4.1023203976182695e-15,
+        "slope": 0.998
+      },
+      "shrinkage_percent": 0.20000000000000018
+    }
+  },
+  "plugin_version": "0.6.0",
+  "proposed_settings": [
+    {
+      "before": {
+        "known": true,
+        "numeric": 0,
+        "raw": "0"
+      },
+      "delta": 0.24999999999999467,
+      "key": "filament_shrinkage_compensation_xy",
+      "owner": "filament_slot_1",
+      "proposed": 0.24999999999999467,
+      "write_requested": false
+    },
+    {
+      "before": {
+        "known": true,
+        "numeric": 0,
+        "raw": "0"
+      },
+      "delta": -0.15037593984962264,
+      "key": "xy_size_compensation",
+      "owner": "print",
+      "proposed": -0.15037593984962264,
+      "write_requested": false
+    },
+    {
+      "before": {
+        "known": true,
+        "numeric": 0,
+        "raw": "0"
+      },
+      "delta": 0.20000000000000018,
+      "key": "filament_shrinkage_compensation_z",
+      "owner": "filament_slot_1",
+      "proposed": 0.20000000000000018,
+      "write_requested": false
+    }
+  ],
+  "readback_status": "NOT_PERFORMED",
+  "schema_version": "1.1.0",
+  "severity": "WARN",
+  "solver_version": "2.0.0",
+  "verification_status": "NOT_VERIFIED",
+  "warnings": [
+    "x120: measurement range exceeds the observed dimensional deviation",
+    "y120: measurement range exceeds the observed dimensional deviation"
+  ],
+  "workflow_state": "ESTIMATED"
+}

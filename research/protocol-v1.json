@@ -1,0 +1,21 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "status": "DRAFT",
+  "gate_a_repeats": 10,
+  "gate_b_repeats": 5,
+  "print_batches": 3,
+  "operators": 2,
+  "calipers": 3,
+  "max_block_attempts": 60,
+  "range_margin_mm": 0.03,
+  "shift_margin_mm": 0.03,
+  "improvement_ratio": 0.8,
+  "worsening_ratio": 1.2,
+  "bootstrap_iterations": 10000,
+  "bootstrap_confidence": 0.9,
+  "gate_b_aggregation": "median",
+  "installation_statuses": ["OK", "INSTALL_FAILED", "SLIPPED", "AMBIGUOUS_CONTACT", "EDGE_DEFECT", "ZERO_CHECK_FAILED", "SKIPPED", "TRANSCRIPTION_ERROR"],
+  "schedule_columns": ["observation_id", "trial_id", "protocol_version", "gate", "session_id", "block_id", "scheduled_order", "print_batch_id", "print_id", "blind_model_id", "artifact_id", "artifact_revision", "operator_id", "caliper_id", "axis", "feature_id", "measurement_method", "nominal_mm", "repetition"],
+  "measurement_columns": ["observation_id", "trial_id", "protocol_version", "gate", "session_id", "block_id", "scheduled_order", "actual_order", "print_batch_id", "print_id", "blind_model_id", "artifact_id", "artifact_revision", "operator_id", "caliper_id", "axis", "feature_id", "measurement_method", "nominal_mm", "repetition", "zero_before_mm", "zero_after_mm", "measured_mm", "installation_status", "failure_reason", "elapsed_since_print_h", "notes", "supersedes_observation_id"]
+}

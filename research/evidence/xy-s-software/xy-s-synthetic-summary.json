@@ -1,0 +1,34 @@
+{
+  "scale": {
+    "status": "COMPARED",
+    "baseline_quality": "ACCEPTED_BY_SOFTWARE_GATES",
+    "compensation_match": "MATCHED_DECLARATION",
+    "proposed_xy_shrinkage_percent": 0.5000000000000004,
+    "physical_validation": "NOT_ESTABLISHED",
+    "comparisons": {
+      "CLOSER_TO_NOMINAL": 32
+    }
+  },
+  "offsets": {
+    "status": "COMPARED",
+    "baseline_quality": "ACCEPTED_BY_SOFTWARE_GATES",
+    "compensation_match": "MATCHED_DECLARATION",
+    "proposed_xy_shrinkage_percent": 0.5000000000000004,
+    "physical_validation": "NOT_ESTABLISHED",
+    "comparisons": {
+      "CLOSER_TO_NOMINAL": 16,
+      "FARTHER_FROM_NOMINAL": 16
+    }
+  },
+  "contradiction": {
+    "status": "REVIEW_NEEDED",
+    "baseline_quality": "REVIEW_NEEDED",
+    "compensation_match": "MATCHED_DECLARATION",
+    "proposed_xy_shrinkage_percent": 0.5000000000000004,
+    "physical_validation": "NOT_ESTABLISHED",
+    "comparisons": {
+      "CLOSER_TO_NOMINAL": 17,
+      "FARTHER_FROM_NOMINAL": 15
+    }
+  }
+}

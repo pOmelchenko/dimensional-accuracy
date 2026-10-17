@@ -1,0 +1,64 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install the generation and test toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            fonts-liberation lua5.4 openscad xauth xvfb
+          openscad --version
+          lua5.4 -v
+          fc-match "Liberation Sans:style=Bold"
+
+      - name: Build, test and stage the runtime plugin from source
+        run: |
+          make LUA=lua5.4 LUAC=luac5.4 OPENSCAD="xvfb-run -a openscad" stage-plugin
+          test ! -e prototypes/dimensional_accuracy_xy_7x5.stl
+          test ! -e prototypes/dimensional_accuracy_zc40.stl
+
+      - name: Verify opt-in research prototypes
+        run: make OPENSCAD="xvfb-run -a openscad" verify-prototypes
+
+      - name: Check the staged plugin payload
+        run: |
+          test "$(find build/dev.omelchenko.dimensional-accuracy -type f | wc -l)" -eq 7
+          test -f build/dev.omelchenko.dimensional-accuracy/LICENSE
+          test -f build/dev.omelchenko.dimensional-accuracy/manifest.json
+          test -f build/dev.omelchenko.dimensional-accuracy/generate_gauge.lua
+          test -f build/dev.omelchenko.dimensional-accuracy/calculate_compensation.lua
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_gauge.stl
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_z_gauge.stl
+          test -f build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_xyz_gauge.stl
+
+  alpha12-host-patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the exact PrusaSlicer alpha12 baseline
+        uses: actions/checkout@v4
+        with:
+          repository: prusa3d/PrusaSlicer
+          ref: 30ef59195e0f3ee6f270b185bb5f9fb5f349f81f
+          path: host-source
+      - name: Verify the combined host patch applies cleanly
+        run: |
+          git -C host-source apply --check "$GITHUB_WORKSPACE/patches/prusaslicer-alpha12.patch"
+          git -C host-source apply "$GITHUB_WORKSPACE/patches/prusaslicer-alpha12.patch"
+          git -C host-source diff --check

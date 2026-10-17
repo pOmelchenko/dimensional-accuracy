@@ -1,0 +1,15 @@
+EXCERPT: same isolated application process; SYNTHETIC inputs, no print.
+Dimensional accuracy XY-S stepped cross generated (145 x 145 x 4.5 mm)
+[2026-09-06 03:21:10.102] [info] [BackgroundProcess.cpp:215] {project_id: 0, bed_id: 4}: slice
+[2026-09-06 03:21:10.114] [info] [Print.cpp:1335] Starting the slicing process.  Resident memory: 1,136MB; Shared memory: 129MB; Private memory: 1,007MB; Peak memory usage: 1,164MB
+[2026-09-06 03:21:10.807] [info] [Print.cpp:1444] Slicing process finished.  Resident memory: 1,216MB; Shared memory: 132MB; Private memory: 1,084MB; Peak memory usage: 1,214MB
+[2026-09-06 03:21:10.848] [info] [GCode.cpp:717] Exporting G-code...  Resident memory: 1,235MB; Shared memory: 133MB; Private memory: 1,102MB; Peak memory usage: 1,233MB
+[2026-09-06 03:25:20.186] [info] [PrintHostJobData.cpp:9] get_export_format_from_extension extension: .gcode
+Write calls completed; checking the active settings.
+Readback filament shrinkage compensation XY: expected 0.500000000%, actual 0.500000000% (MATCHED)
+Written and checked: all selected active settings match the calculation.
+[2026-09-06 03:33:26.225] [info] [BackgroundProcess.cpp:215] {project_id: 0, bed_id: 4}: slice
+[2026-09-06 03:33:26.225] [info] [Print.cpp:1335] Starting the slicing process.  Resident memory: 1,482MB; Shared memory: 141MB; Private memory: 1,341MB; Peak memory usage: 1,482MB
+[2026-09-06 03:33:26.575] [info] [Print.cpp:1444] Slicing process finished.  Resident memory: 1,495MB; Shared memory: 141MB; Private memory: 1,354MB; Peak memory usage: 1,494MB
+[2026-09-06 03:33:26.582] [info] [GCode.cpp:717] Exporting G-code...  Resident memory: 1,513MB; Shared memory: 141MB; Private memory: 1,372MB; Peak memory usage: 1,512MB
+[2026-09-06 03:37:51.595] [info] [PrintHostJobData.cpp:9] get_export_format_from_extension extension: .gcode

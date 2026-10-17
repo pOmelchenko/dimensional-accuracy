@@ -1,0 +1,1143 @@
+{
+  "status": "TRAJECTORY_SCALE_CONFIRMED",
+  "physical_validation": "NOT_ESTABLISHED",
+  "artifact_id": "DA-XY-S",
+  "artifact_revision": 1,
+  "nominal_span_mm": 145,
+  "baseline_xy_percent": 0,
+  "compensated_xy_percent": 0.5000000000000004,
+  "expected_scale_factor": 1.0050251256281406,
+  "expected_span_delta_mm": 0.7286432160803891,
+  "tolerance_mm": 0.005,
+  "checked_layer_count": 16,
+  "unchanged_layer_z_mm": [
+    0.2,
+    0.35,
+    0.5,
+    0.65,
+    0.8,
+    0.95,
+    1.1,
+    1.25,
+    1.4,
+    1.55,
+    1.7,
+    1.85,
+    2.0,
+    2.15,
+    2.3,
+    2.45,
+    2.6,
+    2.75,
+    2.9,
+    3.05,
+    3.2,
+    3.35,
+    3.5,
+    3.65,
+    3.8,
+    3.95,
+    4.1,
+    4.25,
+    4.4,
+    4.55
+  ],
+  "changed_config_keys": [
+    "filament_shrinkage_compensation_xy"
+  ],
+  "measurements": [
+    {
+      "z_mm": 0.65,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 10192
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 10163
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 10065
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 10035
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 0.65,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 10241
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 10178
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 10112
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 10051
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 0.8,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 13098
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 13069
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 12891
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 12864
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 0.8,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 13142
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 13085
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 12939
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 12878
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 0.95,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 16021
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 16003
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 15641
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 15623
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 0.95,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 16053
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 16012
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 15673
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 15632
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.1,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 16827
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 16808
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 16454
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 16436
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.1,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 16859
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 16818
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 16486
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 16445
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.25,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 17631
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 17611
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 17266
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 17246
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.25,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 17664
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 17622
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 17299
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 17257
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.4,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 18435
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 18417
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 18076
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 18058
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.4,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 18469
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 18426
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 18109
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 18067
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.55,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 19241
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 19223
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 18889
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 18871
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.55,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 19273
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 19232
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 18921
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 18880
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.7,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 20046
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 20027
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 19702
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 19684
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.7,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 20079
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 20037
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 19734
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 19693
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.85,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 20851
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 20833
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 20514
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 20496
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 1.85,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 20883
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 20842
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 20547
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 20505
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.0,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 21655
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 21637
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 21324
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 21306
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.0,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 21689
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 21646
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 21359
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 21315
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.15,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 22461
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 22442
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 22136
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 22118
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.15,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 22493
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 22452
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 22168
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 22127
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.3,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 23265
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 23247
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 22949
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 22931
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.3,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 23298
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 23256
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 22981
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 22940
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.45,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 24071
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 24053
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 23761
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 23743
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.45,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 24103
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 24062
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 23794
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 23752
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.6,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 24877
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 24857
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 24573
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 24553
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.6,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 24909
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 24866
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 24606
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 24562
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.75,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 25680
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 25661
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 25384
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 25366
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.75,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 25713
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 25671
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 25416
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 25375
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.9,
+      "axis": "X",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 52.725,
+          "width_mm": 0.449999,
+          "line": 26485
+        },
+        "high": {
+          "coordinate_mm": 197.275,
+          "width_mm": 0.449999,
+          "line": 26467
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 52.361,
+          "width_mm": 0.449999,
+          "line": 26197
+        },
+        "high": {
+          "coordinate_mm": 197.639,
+          "width_mm": 0.449999,
+          "line": 26179
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    },
+    {
+      "z_mm": 2.9,
+      "axis": "Y",
+      "baseline": {
+        "low": {
+          "coordinate_mm": 32.725,
+          "width_mm": 0.449999,
+          "line": 26517
+        },
+        "high": {
+          "coordinate_mm": 177.275,
+          "width_mm": 0.449999,
+          "line": 26476
+        },
+        "centerline_span_mm": 144.55,
+        "nominal_boundary_span_mm": 144.999999
+      },
+      "compensated": {
+        "low": {
+          "coordinate_mm": 32.361,
+          "width_mm": 0.449999,
+          "line": 26229
+        },
+        "high": {
+          "coordinate_mm": 177.639,
+          "width_mm": 0.449999,
+          "line": 26188
+        },
+        "centerline_span_mm": 145.27800000000002,
+        "nominal_boundary_span_mm": 145.727999
+      },
+      "measured_delta_mm": 0.7280000000000086,
+      "delta_error_mm": -0.0006432160803804265
+    }
+  ],
+  "sha256": {
+    "baseline_gcode": "6b29fc05c52dd9531592887ac4b27767160f63ce48b63afc3e4a2692ce218a71",
+    "compensated_gcode": "28b48a0e46d5036aea765003671045448bee3f9d2ab02d296a91674e8a01dd2e",
+    "apply_result": "76496bad70ee98b90a5717e917166f485adcc946c6406730baaead933fc7aba8"
+  }
+}

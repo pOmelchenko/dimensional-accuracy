@@ -1,0 +1,5 @@
+{
+  "status": "REJECTED_AS_EXPECTED",
+  "case": "actual baseline trajectories with only Z footer changed to 0.5%",
+  "error": "Z trajectory mismatch at 40 mm: delta 0, expected 0.201005"
+}

@@ -1,0 +1,20 @@
+{
+  "source_head": "5f096a3cd060d5dcf4e814c53cfb06fd6fc7e332",
+  "source_diff_sha256": "cc2caec4c91cea0f54edd2e52c95fdc9e03e1fc9bc1487c208d797483e80ca3e",
+  "source_status": " M doc/Plugin_API.md\n M src/slic3r-shared/include/Slic3r/App/Lua/Plugin.hpp\n M src/slic3r-shared/include/Slic3r/App/Lua/PluginDialog.hpp\n M src/slic3r-shared/src/Slic3r/App/Lua/Plugin.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/PluginDialog.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/PluginSystem.cpp\n M src/slic3r-shared/src/Slic3r/App/Lua/ProjectApi.cpp\n M src/slic3r-shared/test/Slic3r/App/Lua/PluginDialogTests.cpp\n M src/slic3r-shared/test/Slic3r/App/Lua/ProjectApiTests.cpp\n",
+  "files": {
+    "build/slicer/src/slic3r-app-launcher/slic3r-app-launcher": "fd8a50afbf550820fa7b5145e2a74d62fd8e3c26b3897b1f0d9b6a482d35666b",
+    "build/slicer/src/OCCTWrapper.so": "f4442ef487c2c28d2c628a46fba72cba28fafd6bc77fcff9ff2bc4ccc42a907c",
+    "build/slicer/src/slic3r-shared/OCCTWrapper.so": "f4442ef487c2c28d2c628a46fba72cba28fafd6bc77fcff9ff2bc4ccc42a907c",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/manifest.json": "c9189d6c48c0cd5b19f04b1405305c979e4af3527b85390d58d6e56ae55a0c1a",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/calculate_compensation.lua": "341e0cc8a92ef256ab654170e536c91197a1476ebea93be536932b7f0046e824",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/generate_gauge.lua": "5b08445bcab022b0414e414a4843b15f5cd83e3e3206787d3494afcbaf066dac",
+    "dimensional-accuracy/build/dev.omelchenko.dimensional-accuracy/dimensional_accuracy_gauge.stl": "cb5eb1e5b367e4d430d01884f99ef0856b8bfe60ee0c2da52d829a0556489d01"
+  },
+  "app_xvfb_pids": [
+    87536,
+    87534
+  ],
+  "os_release": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "architecture": "aarch64"
+}
