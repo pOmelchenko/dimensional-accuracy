@@ -1,5 +1,8 @@
 # XY-S form, 2026-09-06
 
+This is the historical alpha11 integration record. For plugin 0.12.0 and the
+combined alpha12 host patch, use [alpha12 compatibility](alpha12-compatibility.md).
+
 Current [XY-S geometry, calculator and Ubuntu GUI validation](xy-s-validation.md):
 119 tests passed; preview/export/replay checked; no physical print.
 

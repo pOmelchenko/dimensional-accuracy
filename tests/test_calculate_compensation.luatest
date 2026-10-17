@@ -402,7 +402,7 @@ test("apply requires confirmation of how the exact gauge was printed", function(
     assert_equal(reads, 0, "preset reads before gauge confirmation")
 end)
 
-test("confirmed unreadable percentage baseline can reach a write attempt", function()
+test("confirmed unreadable percentage baseline blocks writes on public alpha12", function()
     local opts = default_opts()
     opts.apply_uniform_scale = true
     opts.confirm_zero_compensation = true
@@ -412,9 +412,21 @@ test("confirmed unreadable percentage baseline can reach a write attempt", funct
         xy_size = 0.0,
         z_shrinkage = 0.0
     })
-    assert_true(confirmed, confirmed_error)
-    assert_equal(#confirmed_calls, 1, "confirmed write attempts")
-    assert_equal(confirmed_calls[1].name, "filament_shrinkage_compensation_xy")
+    assert_equal(confirmed, false)
+    assert_contains(confirmed_error, "requires numeric percentage readback")
+    assert_equal(#confirmed_calls, 0, "no writes with an unreadable baseline")
+end)
+
+test("unreadable Z baseline blocks XY and Z writes together", function()
+    local opts = default_opts()
+    opts.calibrate_z, opts.apply_uniform_scale, opts.apply_z_shrinkage = true, true, true
+    opts.confirm_zero_compensation, opts.confirm_apply_capable_host = true, true
+    local ok, message, calls = run_execute(opts, {
+        xy_shrinkage = 0, xy_size = 0, z_shrinkage = {}
+    })
+    assert_equal(ok, false)
+    assert_contains(message, "Filament shrinkage compensation Z")
+    assert_equal(#calls, 0, "every selected baseline is checked before any write")
 end)
 
 test("invalid Z prevents otherwise valid XY writes", function()
@@ -737,6 +749,38 @@ test("result display failure cannot turn a completed calculation into apply fail
     assert_equal(record.apply_status, "NOT_REQUESTED")
     assert_contains(joined_logs(logs), "Could not display calculation result")
     assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
+end)
+
+test("public alpha12 preview logs a readable result without dialog extensions", function()
+    local opaque = setmetatable({}, {
+        __index = function() error("opaque Percentage userdata") end,
+        __tostring = function() return "sol.Slic3r::Domain::Percentage: 0x1234" end
+    })
+    local calls = install_api({xy_shrinkage = opaque, xy_size = 0, z_shrinkage = opaque})
+    local opts = default_opts()
+    set_xy(opts, .995, 0)
+    local logs = {}
+    print = function(message) logs[#logs + 1] = tostring(message) end
+    local ok, record = pcall(execute, opts)
+    print = real_print
+    assert_true(ok, record)
+    assert_equal(#calls, 0)
+    assert_equal(record.apply_status, "NOT_REQUESTED")
+    assert_equal(record.baseline.xy_shrinkage.known, false)
+    assert_contains(joined_logs(logs), "Dimensional accuracy result:")
+    assert_contains(joined_logs(logs), "Preview: no settings were changed")
+    assert_contains(joined_logs(logs), "XY shrinkage: unavailable -> 0.5000%")
+    assert_contains(joined_logs(logs), "DA_RESULT_JSON ")
+
+    opts.apply_uniform_scale, opts.confirm_zero_compensation, opts.confirm_apply_capable_host = true, true, true
+    logs = {}
+    print = function(message) logs[#logs + 1] = tostring(message) end
+    local applied, message = pcall(execute, opts)
+    print = real_print
+    assert_equal(applied, false)
+    assert_equal(#calls, 0)
+    assert_contains(message, "Official 3.0.0-alpha12 supports preview only")
+    assert_contains(joined_logs(logs), "Calculation stopped; no settings were changed")
 end)
 
 local function confirmed_opts(with_z)

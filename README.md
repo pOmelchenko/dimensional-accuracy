@@ -2,7 +2,7 @@
 
 An experimental calibration plugin for the PrusaSlicer Lua Plugin API. The
 accepted XY reference is **DA-XY-S revision 1**: a 145 × 145 × 4.5 mm stepped
-cross with two 10 × 45 mm windows and chamfered corner reliefs. Plugin **0.11.0**
+cross with two 10 × 45 mm windows and chamfered corner reliefs. Plugin **0.12.0**
 collects its outside, depth, inside and wall measurements. The Z-B reference is
 unchanged. See the [XY-S measurement guide](model/xy-reference.md).
 
@@ -13,37 +13,44 @@ unchanged. See the [XY-S measurement guide](model/xy-reference.md).
 
 ## Compatibility and requirements
 
-- PrusaSlicer 3.0.0-alpha11 as the API baseline; the complete compact XY-S form
-  uses the development dialog patch described below;
-- for automatic application, a development PrusaSlicer build containing both
-  preset-setting host fixes described below; numeric write verification also
-  needs the `fix/lua-percentage-readback` host patch;
+- PrusaSlicer **3.0.0-alpha12** as the public API baseline;
+- for the compact XY-S form and automatic application, a development build with
+  the [combined alpha12 patch](patches/prusaslicer-alpha12.patch), containing the
+  dialog extensions, preset-update notifications, material-override activation
+  and numeric percentage readback;
 - `project.plugin` API version 1.0.0;
 - an FFF, single-material print using physical extruder/material slot 1 (SLA
   and multi-material calibration are not supported);
 - calipers with a resolution of 0.01–0.02 mm.
 
-As of 2026-09-04, the public PrusaSlicer source baseline is 3.0.0-alpha11. Gauge
-generation and a calculation-only preview are supported for experimental use.
-Automatic application is not supported on that build: Lua preset setters bypass
-preset-change notifications, so the settings UI and slicing state may remain
-stale after the calls. An apply-capable host must include both the preset-update
-fix and the material-override activation fix before this workflow is tested.
-The current combined development patches pass the recorded
-[XY-S apply and reslicing check](research/xy-s-software-validation.md) and
-[Z reslicing plus preset/project restart checks](research/z-persistence-validation.md).
+The [alpha12 update](https://github.com/prusa3d/PrusaSlicer/releases/tag/version_3.0.0-alpha12)
+fixes numeric dialog controls, but still lacks the setting-update, override and
+percentage-readback changes required by this plugin. On the public build, use
+gauge generation and calculation-only preview: all form rows remain visible
+and the readable result, diagnostics and `DA_RESULT_JSON` are written to the
+process log. The plugin refuses automatic application when any selected
+compensation value is unreadable, even if both confirmation boxes are checked.
 
-The PrusaSlicer float-control defect is tracked in
+The alpha12 patch is rebased onto commit
+`30ef59195e0f3ee6f270b185bb5f9fb5f349f81f` and includes all three development
+topics; do not apply the older dialog-only patch on top. See the
+[compatibility and build instructions](research/alpha12-compatibility.md).
+Earlier [XY-S reslicing](research/xy-s-software-validation.md) and
+[Z/persistence](research/z-persistence-validation.md) checks were performed on
+patched alpha11. They are historical evidence, not an alpha12 GUI or slicing
+validation.
+
+The PrusaSlicer float-control defect, fixed in alpha12, is tracked in
 [prusa3d/PrusaSlicer#15611](https://github.com/prusa3d/PrusaSlicer/issues/15611).
-The plugin deliberately accepts measurements as text to avoid the swapped
-`float` and `int` controls in alpha11. Enter 3–5 positive decimal readings separated by `;`, for example
+The plugin continues accepting measurements as text because each field holds
+repeated readings and accepts a decimal comma. Enter 3–5 positive decimal readings separated by `;`, for example
 `39,98;40,00;39,99`. Each reading accepts `.` or `,` as the decimal separator;
 surrounding spaces are accepted and preserved in the structured result. Invalid text,
 non-finite values, and non-positive measurements are rejected.
 
-The manifest's `3.0.0-alpha11` minimum names the earliest public build supported
+The manifest's `3.0.0-alpha12` minimum names this version's public API baseline
 for generation and preview. It is not a promise that automatic application
-works on alpha11 or on every later 3.0 build. An exact public apply-capable
+works on alpha12 or on every later 3.0 build. An exact public apply-capable
 PrusaSlicer version will be named only after the host and physical validation
 gates pass.
 
@@ -60,7 +67,6 @@ the release target additionally needs OpenSCAD.
 git clone --branch fix/lua-plugin-settings \
   https://github.com/pOmelchenko/dimensional-accuracy.git
 cd dimensional-accuracy
-make release
 make stage-plugin
 
 PRUSASLICER_CONFIG_DIR="/path/shown/by/Help/Show Configuration Folder"
@@ -80,13 +86,13 @@ artifact.
 
 ## Usage
 
-The development [calculator dialog patch](research/calculator-ui.md) adds wide,
+The development [alpha12 patch](research/alpha12-compatibility.md) adds wide,
 aligned measurement fields, a shared input example, optional Z/session fields,
 and an in-window result with current/proposed values and their difference.
 `Show details` expands fit diagnostics and warnings; `Back` preserves the form.
 Labels occupy the left column; switches align with the inputs in the right
 column, including `Show details` on the result page. Long labels wrap.
-Plugin 0.11.0 keeps a compact 580-unit dialog with 300-unit measurement fields.
+Plugin 0.12.0 keeps a compact 580-unit dialog with 300-unit measurement fields.
 Plugin 0.8.0 with the updated dialog patch shows the selected filament preset's
 name and material slot 1 above the form and on the result page. The name is read
 again on each opening, including after changing presets. It is read-only;
@@ -104,18 +110,20 @@ Older hosts ignore this help metadata; the shared entry instructions remain.
 On hosts without that extension, fields remain visible and results use the log.
 An unreadable current setting is shown as unavailable, including its difference;
 plugin 0.7.0 also rereads the active material settings after applying a change.
-The separate Percentage host patch makes these values readable. The result
+The combined alpha12 host patch makes these values readable. The result
 shows the actual and expected values, their match status, and the change from
 the initial setting. Host branch details are in the dialog note linked above.
 
-On the current public PrusaSlicer baseline, use the calculator only as a preview:
+On official PrusaSlicer 3.0.0-alpha12, use the calculator only as a preview:
 leave all `Apply ...` checkboxes cleared and read the result in the process log.
 They are cleared by default. Automatic application is restricted to a
-development host containing both preset-setting fixes. Every apply run requires
+development host containing the preset-setting fixes and numeric percentage
+readback. Every apply run requires
 two separate explicit confirmations: the running PrusaSlicer build is a
 validated apply-capable host, and the exact gauge being measured was printed
 with every selected compensation setting at zero. The current preset values do
-not prove how that gauge was printed.
+not prove how that gauge was printed. Neither confirmation permits writes
+when a selected current setting cannot be read numerically.
 
 1. Select an FFF profile and put the calibration filament in material slot 1.
    Use a single-material print: no multi-material painting, supports from
@@ -151,7 +159,7 @@ not prove how that gauge was printed.
      are skipped. Hiding retains readings; filled fields are checked whenever
      XY is enabled. These checks do not change the primary scale estimate;
    - for Z, enter 3–5 independent re-seat readings for each step Z40, Z80 and Z120;
-   - keep every `Apply ...` checkbox cleared for a preview on alpha11.
+   - keep every `Apply ...` checkbox cleared for a preview on official alpha12.
 
 7. Review the result and `Show details` in the patched dialog, or the process log
    on a host without the dialog extension. Only on a
@@ -294,6 +302,7 @@ make verify-release     # rebuild and verify the three runtime STL files
 make verify-prototypes  # rebuild and verify the research-only challengers
 make verify-all         # run both verification groups
 make test               # verifier, manifest, generator, and calculator tests
+make test-existing      # same tests using already generated runtime meshes
 make stage-plugin       # stage the exact seven-file unsigned runtime payload
 make stage-plugin-existing # dev-only: verify/stage previously generated STL without OpenSCAD
 ```
@@ -319,6 +328,10 @@ intended component. Canonical oriented surface comparison tolerates coplanar
 retriangulation. These checks do not replace slicing or physical measurements.
 
 ## Validation status
+
+The [0.12.0 alpha12 compatibility record](research/alpha12-compatibility.md)
+describes the current source baseline, regression checks and remaining host
+integration work. The records below describe earlier patched-alpha11 runs.
 
 The [XY-S acceptance check](research/xy-s-validation.md) records geometry gates,
 119 software tests and the Ubuntu dialog/export/replay check for plugin 0.11.0.

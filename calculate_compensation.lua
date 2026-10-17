@@ -2,7 +2,7 @@
 -- Copyright (C) 2026 pOmelchenko
 
 -- BEGIN GENERATED ARTIFACT SPEC
-local PLUGIN_VERSION = "0.11.0"
+local PLUGIN_VERSION = "0.12.0"
 local NOMINAL_LENGTHS = {40, 80, 120}
 local GAUGE_ARTIFACTS = {
     xy = {id = "DA-XY-S", revision = 1},
@@ -155,6 +155,8 @@ info = {
             default = false,
             tooltip = "Confirm that this PrusaSlicer build has been tested to apply plugin changes to the active " ..
                 "filament settings. Checking this box does not install patches or test the build.\n\n" ..
+                "Official PrusaSlicer 3.0.0-alpha12 supports preview only. Applying also requires readable " ..
+                "numeric compensation settings; this confirmation cannot bypass that check.\n\n" ..
                 "After an apply attempt, inspect the readback status in the result. " ..
                 "Readback confirms the setting value, not the accuracy of a printed part."
         }
@@ -863,15 +865,15 @@ local function verify_zero_baseline(state, opts, apply_requested)
 
     if #unreadable > 0 then
         local labels = table.concat(unreadable, ", ")
-        if apply_requested and not opts.confirm_zero_compensation then
+        if apply_requested then
             error(
                 "PrusaSlicer did not expose a readable numeric value for: " ..
-                labels .. ". Verify those settings are zero and enable " ..
-                "'I printed the gauge with selected compensation settings at " ..
-                "zero' before applying; no settings were changed."
+                labels .. ". Automatic apply requires numeric percentage readback " ..
+                "as well as the preset-update and material-override fixes. " ..
+                "Official 3.0.0-alpha12 supports preview only. Leave all Apply " ..
+                "options cleared or use a validated build with these fixes; " ..
+                "no settings were changed."
             )
-        elseif apply_requested then
-            print("Zero-compensation baseline manually confirmed for: " .. labels)
         else
             print(
                 "WARNING: PrusaSlicer could not verify the current value of: " ..
@@ -1176,7 +1178,7 @@ local function execute_run(opts, record)
         (opts.calibrate_z and opts.apply_z_shrinkage) or false
 
     -- Plugin API 1.0.0 has no capability/version query that can distinguish
-    -- the public alpha11 setter from a host carrying the preset-update fixes.
+    -- the public alpha12 setter from a host carrying the preset-update fixes.
     -- Require a separate, explicit assertion in addition to the apply flags.
     if apply_requested and not opts.confirm_apply_capable_host then
         error(
@@ -1393,11 +1395,16 @@ local function result_text(record)
 end
 
 local function show_result(record)
-    -- This optional dialog extension is absent on the public alpha11 host.
+    -- This optional dialog extension is absent on the public alpha12 host.
     -- Keep the log/replay contract and apply status independent of presentation.
-    if type(api) ~= "table" or type(api.show_result) ~= "function" then return end
     local ok, message = pcall(function()
-        api.show_result(result_text(record))
+        local summary, details = result_text(record)
+        if type(api) == "table" and type(api.show_result) == "function" then
+            api.show_result(summary, details)
+        else
+            print("Dimensional accuracy result:\n" .. summary)
+            print("Dimensional accuracy details:\n" .. details)
+        end
     end)
     if not ok then print("Could not display calculation result: " .. tostring(message)) end
 end

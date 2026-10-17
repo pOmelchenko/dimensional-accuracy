@@ -34,7 +34,7 @@ override PLUGIN_STAGE_TMP := build/.dev.omelchenko.dimensional-accuracy.tmp
 	all release gauges prototypes \
 	verify verify-release verify-release-existing verify-existing \
 	verify-prototypes verify-prototypes-existing verify-all \
-	test test-python test-lua test-runtime test-manifest test-makefile-safety \
+	test test-existing test-python test-lua test-runtime test-manifest test-makefile-safety \
 	stage-plugin stage-plugin-existing \
 	clean clean-release clean-prototypes clean-stage
 
@@ -131,7 +131,11 @@ verify-prototypes-existing:
 
 verify-all: verify-release verify-prototypes
 
-test: test-artifacts test-python test-lua test-runtime test-manifest test-makefile-safety
+# Geometry and payload tests need the generated runtime meshes on a fresh clone.
+test: release
+	$(MAKE) test-existing
+
+test-existing: test-artifacts test-python test-lua test-runtime test-manifest test-makefile-safety
 
 test-python:
 	LUA="$(LUA)" $(PYTHON) -m unittest discover -s tests -p 'test_*.py'
@@ -166,7 +170,7 @@ test-makefile-safety:
 		PLUGIN_STAGE_TMP='/tmp/unsafe-stage-tmp' \
 		RM='printf UNSAFE_RM' clean release prototypes )"; \
 	case "$$plan" in \
-		*'/tmp/'*|*'UNSAFE_RM'*) \
+		*'/tmp/unsafe-'*|*'UNSAFE_RM'*) \
 			echo "ERROR: unsafe Makefile override reached a recipe" >&2; \
 			echo "$$plan" >&2; \
 			exit 1 ;; \
@@ -198,7 +202,7 @@ stage-plugin: test verify-release
 # Development-only staging for systems without OpenSCAD. The target name and
 # verifier output make explicit that committed meshes are checked but not
 # regenerated; release packaging must use stage-plugin instead.
-stage-plugin-existing: test verify-release-existing
+stage-plugin-existing: test-existing verify-release-existing
 	@test "$(PLUGIN_STAGE_DIR)" = "build/dev.omelchenko.dimensional-accuracy"
 	@test "$(PLUGIN_STAGE_TMP)" = "build/.dev.omelchenko.dimensional-accuracy.tmp"
 	rm -rf -- "build/.dev.omelchenko.dimensional-accuracy.tmp"

@@ -61,7 +61,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(
             self.manifest["id"], "dev.omelchenko.dimensional-accuracy"
         )
-        self.assertEqual(self.manifest["min_slicer_version"], "3.0.0-alpha11")
+        self.assertEqual(self.manifest["min_slicer_version"], "3.0.0-alpha12")
         self.assertRegex(self.manifest["version"], SEMVER)
         self.assertIn("experimental", self.manifest["name"].lower())
         self.assertIn("experimental", self.manifest["description"].lower())
